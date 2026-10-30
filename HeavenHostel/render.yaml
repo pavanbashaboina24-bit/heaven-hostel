@@ -1,0 +1,5 @@
+services:
+  - type: web
+    name: heaven-hostel
+    runtime: static
+    staticPublishPath: ./HeavenHostel/frontend
