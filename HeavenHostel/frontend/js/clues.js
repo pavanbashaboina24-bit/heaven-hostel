@@ -2,7 +2,7 @@
 // ALL THE WORDS OF THE STORY AND THE PUZZLES
 //
 //   (the notes in the rooms are in gen.js - they change every game)
-//   CLUES    the 9 pages you earn by solving a puzzle
+//   CLUES    the 10 pages you earn by solving a puzzle
 //   STORY    what is shown when chapter 1 ends
 //   LETTER   Ramu's letter (the ending)
 //
@@ -19,7 +19,7 @@ export const RECEPTION_NOTE = {
 };
 
 // ------------------------------------------------------
-// WHAT YOU GET FOR SOLVING A PUZZLE   (9 clues)
+// WHAT YOU GET FOR SOLVING A PUZZLE   (10 clues)
 // ------------------------------------------------------
 export const CLUES = {
 
@@ -55,8 +55,12 @@ export const CLUES = {
         title: "Clue 8 - The village shirt",
         text: "The handle fits. You pull. A panel in the wall slides open. Inside: a neatly folded shirt, hand-stitched, and a note pinned to it:\n\n\"Amma stitched this shirt. When I feel alone I wear it and think of home.\n\nIf I am gone, give it back to her, with my letter.\n\nI hid the letter in the place where I can watch the gate.\""
     },
+    cellar: {
+        title: "Clue 9 - The tin box",
+        text: "The wheels line up. The lid of the little tin box springs open.\n\nInside, wrapped in a page torn from a school notebook, lies ONE thin glass bangle. The page says, in a child's careful handwriting:\n\n\"Amma's bangle. I bought it back with my tea money. The first one.\nTwenty-nine more to go. Then she will wear them all again.\"\n\nUnder the bangle, a coin, folded in a tiny paper boat. He saved for months. He never told anyone.\n\nThere is still only the last candle left, up on the terrace."
+    },
     candles: {
-        title: "Clue 9 - Ramu's last wish",
+        title: "Clue 10 - Ramu's last wish",
         text: "The seventh candle lights. A drawer slides out of the altar. Inside: a rusty blade, and a folded page in Ramu's hand.\n\n\"If you are reading this, please forgive what I did. I only wish somebody had asked me how I was.\n\nI have one wish left.\nI wrote a letter to Amma and Nanna. I hid it where I used to sit alone and watch the gate - the swing under the dead tree. I stitched it inside the seat so that nobody would find it and laugh.\n\nPlease take it to Kothapalli. If they read it, I can rest.\n\n- Ramu\"\n\n(You take the blade. The swing is in the yard behind the hostel.)"
     }
 };

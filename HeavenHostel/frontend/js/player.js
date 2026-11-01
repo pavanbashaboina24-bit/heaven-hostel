@@ -44,6 +44,8 @@ export class Player {
 
 
         // ----- speed -----
+        this.speedScale = 1;       // touch.js sets this lower on phones
+
         this.walkSpeed = 5;
 
         this.runSpeed = 9;
@@ -335,7 +337,7 @@ export class Player {
         const speed =
             (this.keys.run
                 ? this.runSpeed
-                : this.walkSpeed) * stairMul;
+                : this.walkSpeed) * stairMul * this.speedScale;
 
         // ----- jump (Space) -----
         if (this.keys.jump && this.grounded && !this.onStairs) {
@@ -389,13 +391,26 @@ export class Player {
             // the very first step: walking straight OUT lets you step off again
             const leaving = feet < 0.4 && rad > len * 0.6;
 
-            if (feet > 0.05 && feet < top - 0.3 && !leaving) {
+            // coming from the terrace: stepping IN onto the top tread starts the way DOWN
+            const fromTop = feet >= top - 0.3 && rad < -len * 0.25 && r < sp.r1 - 0.15;
 
-                // clearly walking round the tower: that way; otherwise W = up, S = down
+            const midway = feet > 0.05 && feet < top - 0.3 && !leaving;
+
+            if (midway || fromTop) {
+
+                // W goes the way you were going (up if you came from the bottom, DOWN if you
+                // stepped on from the terrace), S goes the other way.  It does not matter where
+                // you look.  Only walking sideways (A / D) follows the way your body turns.
+                if (!this._spDir) this._spDir = feet > top - 2.0 ? -1 : 1;
+
+                const fw = this.keys.forward, bk = this.keys.back;
+
                 let dir;
 
-                if (Math.abs(along) > len * 0.35) dir = along > 0 ? 1 : -1;
-                else dir = (this.keys.back && !this.keys.forward) ? -1 : 1;
+                if (bk && !fw) dir = -this._spDir;
+                else if (fw && !bk) dir = this._spDir;
+                else if (Math.abs(along) > len * 0.35) dir = along > 0 ? 1 : -1;
+                else dir = this._spDir;
 
                 const mid = (sp.r0 + sp.r1) / 2 + 0.05;
 
@@ -405,6 +420,10 @@ export class Player {
 
                 mz = tz * dir * len + rz * (rad * 0.15 + pull);
             }
+        }
+        else if (!sp) {
+
+            this._spDir = 0;
         }
 
         this.move(mx, mz);

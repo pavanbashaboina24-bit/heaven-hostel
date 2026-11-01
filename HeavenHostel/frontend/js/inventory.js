@@ -347,9 +347,11 @@ class Inventory {
 
         foot.className = "foot";
 
+        const tch = document.body.classList.contains("touch");
+
         foot.textContent = opts.mode === "pickup"
-            ? "E - Keep it in your bag        Q - Put it back"
-            : "Q - Close";
+            ? (tch ? "Tap  KEEP IN BAG  or  PUT BACK" : "E - Keep it in your bag        Q - Put it back")
+            : (tch ? "Tap  CLOSE" : "Q - Close");
 
         p.appendChild(h);
 

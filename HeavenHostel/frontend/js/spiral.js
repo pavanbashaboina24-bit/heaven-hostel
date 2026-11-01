@@ -4,7 +4,7 @@ import * as THREE from
 import { inventory } from "./inventory.js";
 import { audio } from "./audio.js";
 import { story } from "./story.js";
-import { frameHooks, getPlayer } from "./haunted.js";
+import { frameHooks, getPlayer, canvasTexture } from "./haunted.js";
 import { tween } from "./secrets.js";
 
 // ======================================================
@@ -15,8 +15,10 @@ import { tween } from "./secrets.js";
 //   - an iron cage with a LOCKED GATE closes the foot of it
 //   - the key (spiral_key) lies in a random room of the hostel
 //     (gen.js: rooms.gatekey, the hint is on the terrace photograph)
-//   - when you go in, the gate slams shut behind you and a message
-//     tells you that Heaven Hostel is locked until Ramu's story ends
+//   - once unlocked the gate STAYS OPEN: you can go up and come back down
+//     (the "you are locked in" scene belongs to the MAIN GATE, exterior.js)
+//   - it is a dread place: blood, hand prints, chains, a sick red light
+//     that flickers, and a few scares on the way up and down
 //   - at the top a short bridge leads onto the terrace
 //     (a gap in the west parapet, world.js)
 //
@@ -390,23 +392,12 @@ export function buildSpiral(scene, cs, interaction) {
 
     trig.userData.getPrompt = () => {
 
-        if (inventory.flag("spiral_shut")) return "The gate is locked";
-
         if (inventory.flag("spiral_open")) return "Go in - the iron stairs to the terrace";
 
         return inventory.has("spiral_key") ? "Press E - Unlock the gate" : "Press E - Look at the gate";
     };
 
     trig.userData.interact = () => {
-
-        if (inventory.flag("spiral_shut")) {
-
-            audio.doorLocked();
-
-            inventory.say("The gate has locked behind you. There is only one way: up.", 3.5);
-
-            return;
-        }
 
         if (inventory.flag("spiral_open")) return;
 
@@ -436,62 +427,178 @@ export function buildSpiral(scene, cs, interaction) {
 
     interaction.add(trig);
 
-    // ---------------------------------------------------- "you are locked in"
-    const welcome = () => {
+    // ---------------------------------------------------- dread: stains, hands, chains, red light
+    const dread = new THREE.Group();
 
-        inventory.setFlag("spiral_shut");
+    group.add(dread);
 
-        // never close the gate ON the player: step him a little towards the middle
-        const p0 = getPlayer();
+    const stainTex = canvasTexture(128, 128, (g, w, h) => {
 
-        if (p0) {
+        g.clearRect(0, 0, w, h);
 
-            const dx = p0.pos.x - gx, dz = p0.pos.z - gz;
+        g.fillStyle = "rgba(90,6,8,0.85)";
 
-            const d = Math.hypot(dx, dz);
+        for (let i = 0; i < 7; i++) {
 
-            if (d < 1.6) {
+            g.beginPath();
 
-                const ux = (S.cx - gx) / (Math.hypot(S.cx - gx, S.cz - gz) || 1), uz = (S.cz - gz) / (Math.hypot(S.cx - gx, S.cz - gz) || 1);
+            g.ellipse(40 + Math.random() * 50, 40 + Math.random() * 50, 8 + Math.random() * 20, 6 + Math.random() * 14, Math.random() * 3, 0, TAU);
 
-                p0.pos.x += ux * (1.6 - d);
-
-                p0.pos.z += uz * (1.6 - d);
-            }
+            g.fill();
         }
 
-        setBlock(true);
+        g.fillRect(58, 70, 5, 50);
 
-        tween(gate, "rotation.y", closedYaw, 250);
+        g.fillRect(84, 66, 4, 36);
+    });
 
-        audio.play("slam", { vol: 1.2, send: 0.25 });
+    const handTex = canvasTexture(128, 128, (g, w, h) => {
 
-        setTimeout(() => {
+        g.clearRect(0, 0, w, h);
 
-            story.pages([
-                { img: "story_gate.jpg", title: "LOCKED IN", text: "THE GATE SLAMS SHUT BEHIND YOU.\n\nThe lock turns by itself.\nSomewhere above you, slow footsteps start to walk." },
-                { img: "story_gate.jpg", text: "YOU ARE LOCKED IN WITH THE GHOST.\n\nHeaven Hostel has been locked since the night Ramu died. No one who came in was ever allowed to leave.\n\nThere is only one way out: finish what he began.\nSolve his puzzles, find his letter, and the hostel will show you the way." }
-            ], { last: "Enter  -  climb" });
+        g.fillStyle = "rgba(120,8,10,0.92)";
 
-        }, 700);
-    };
+        g.beginPath(); g.ellipse(64, 84, 26, 30, 0, 0, TAU); g.fill();
 
-    frameHooks.push(() => {
+        for (const [fx, fy, fr] of [[34, 52, -0.35], [50, 36, -0.1], [68, 32, 0.08], [86, 40, 0.3], [100, 66, 1.0]]) {
 
-        if (!inventory.flag("spiral_open") || inventory.flag("spiral_shut")) return;
+            g.save(); g.translate(fx, fy); g.rotate(fr); g.beginPath(); g.ellipse(0, 0, 7, 20, 0, 0, TAU); g.fill(); g.restore();
+        }
+
+        g.fillRect(52, 100, 18, 28);
+    });
+
+    const stainMat = new THREE.MeshBasicMaterial({ map: stainTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+
+    const handMat = new THREE.MeshBasicMaterial({ map: handTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+
+    // stains on the treads
+    for (let j = 3; j < S.n - 1; j += 3 + (j % 4 === 0 ? 1 : 0)) {
+
+        const c = centreAngle(j), rr = 1.0 + ((j * 7) % 10) * 0.12;
+
+        const p = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.7), stainMat);
+
+        p.rotation.x = -Math.PI / 2;
+
+        p.rotation.z = (j * 1.7) % TAU;
+
+        p.position.set(Math.cos(c) * rr, (j + 1) * rise + 0.012, Math.sin(c) * rr);
+
+        dread.add(p);
+    }
+
+    // red hands on the pole, climbing up it
+    for (let k = 0; k < 9; k++) {
+
+        const a = k * 2.3, y = 0.9 + k * 1.25;
+
+        const p = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), handMat);
+
+        p.position.set(Math.cos(a) * 0.335, y, Math.sin(a) * 0.335);
+
+        p.rotation.y = Math.PI / 2 - a;
+
+        p.rotation.z = ((k * 37) % 40 - 20) * 0.02;
+
+        dread.add(p);
+    }
+
+    // chains that swing under the stairs
+    const chains = [];
+
+    const chainMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2c, roughness: 0.5, metalness: 0.7 });
+
+    for (let k = 0; k < 8; k++) {
+
+        const j = 6 + k * 5, c = centreAngle(j), len = 1.1 + (k % 3) * 0.4;
+
+        const hook = new THREE.Group();
+
+        hook.position.set(Math.cos(c) * 2.15, (j + 1) * rise - 0.14, Math.sin(c) * 2.15);
+
+        const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, len, 5), chainMat);
+
+        ch.position.y = -len / 2;
+
+        hook.add(ch);
+
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 5), chainMat);
+
+        tip.position.y = -len;
+
+        hook.add(tip);
+
+        dread.add(hook);
+
+        chains.push({ hook, ph: k * 1.3, amp: 0.1 + (k % 3) * 0.05 });
+    }
+
+    // a sick red light that flickers in the tower
+    const redLight = new THREE.PointLight(0xff2a18, 0, 10, 2);
+
+    redLight.position.set(0, 4, 0);
+
+    group.add(redLight);
+
+    // the scares: lights die, something thuds, a voice. Each one once per game.
+    const beats = [
+        { y: 3.0, done: false, say: "Something is breathing on the stairs behind you.", snd: "creak_2" },
+        { y: 6.5, done: false, say: "The chains are moving. There is no wind.", snd: "thud" },
+        { y: 9.5, done: false, say: "A whisper, right at your ear: 'down...'", snd: "creak_3" }
+    ];
+
+    let dark = 0, nextBeat = 0;
+
+    frameHooks.push((t, dt) => {
 
         const p = getPlayer();
 
-        if (!p || story.busy) return;
+        for (const c of chains) c.hook.rotation.z = Math.sin(t * 1.4 + c.ph) * c.amp;
 
-        // as soon as you are inside the cage (a bit past the gate)
-        if (Math.hypot(p.pos.x - S.cx, p.pos.z - S.cz) < S.fence - 1.0 && p.pos.y < 3.5) welcome();
+        const near = p ? Math.hypot(p.pos.x - S.cx, p.pos.z - S.cz) < 5.5 : false;
+
+        const fy = p ? p.pos.y - p.playerHeight : 0;
+
+        if (!near) { redLight.intensity = 0; return; }
+
+        // flicker (a hard flicker now and then)
+        const f = Math.sin(t * 17) * Math.sin(t * 5.3);
+
+        redLight.intensity = (dark > 0 ? 0 : 5 + f * 3 + (Math.random() < 0.02 ? -5 : 0));
+
+        if (p) redLight.position.y = Math.max(1.5, fy + 1.4);
+
+        if (dark > 0) dark -= dt;
+
+        if (!p || p.hidden || story.busy || fy > S.top - 0.2) return;
+
+        for (const b of beats) {
+
+            if (b.done || Math.abs(fy - b.y) > 0.5) continue;
+
+            if (inventory.flag("spiral_beat_" + b.y)) { b.done = true; continue; }
+
+            b.done = true;
+
+            inventory.setFlag("spiral_beat_" + b.y);
+
+            dark = 0.7;
+
+            audio.play(b.snd, { vol: 0.9, send: 0.4 });
+
+            inventory.say(b.say, 3);
+
+            break;
+        }
     });
+
+    inventory.resetHooks.push(() => { for (const b of beats) b.done = false; dark = 0; });
 
     // ---------------------------------------------------- new game: lock it again
     const sync = () => {
 
-        const open = inventory.flag("spiral_open") && !inventory.flag("spiral_shut");
+        const open = inventory.flag("spiral_open");
 
         gate.rotation.y = open ? openYaw : closedYaw;
 

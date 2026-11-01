@@ -5,6 +5,8 @@ import { createGhostModel } from "./ghostmodel.js";
 import { anim, ghostFx } from "./haunted.js";
 import { audio } from "./audio.js";
 import { events } from "./events.js";
+import { inventory } from "./inventory.js";
+import { theCase, PAPER_PUZZLE } from "./gen.js";
 
 // ======================================================
 // THE GHOST OF HAVEN HOSTEL
@@ -102,6 +104,39 @@ export const GHOST_STORY = {
 //   (the stairs up to the terrace are left alone)
 // ======================================================
 const FLOORS = [0, 4, 8, 12];      // 12 = the terrace
+
+// the cellar under Room 106 (cellar.js): Ramu can come down there too
+const CELLAR = { x0: -6.2, x1: -0.8, z0: 7.9, z1: 14.1, y: -4 };
+
+// the rooms (numbers like 204) that still hold something the player needs:
+// the notes of unsolved puzzles, the cheese, the lever handle, the stairs key
+function clueRoomNums() {
+
+    const out = new Set();
+
+    try {
+
+        const c = theCase();
+
+        const need = Object.assign({ cheese: "rat", handle: "lever" }, PAPER_PUZZLE);
+
+        for (const k of Object.keys(need)) {
+
+            if (inventory.flag("pz_" + need[k])) continue;
+
+            const t = c.rooms[k];
+
+            if (t) out.add(Number(t[1]) * 100 + Number(t[3]));
+        }
+
+        if (!inventory.flag("spiral_open") && c.rooms.gatekey) out.add(Number(c.rooms.gatekey[1]) * 100 + Number(c.rooms.gatekey[3]));
+
+        if (!inventory.flag("pz_drawer") || !inventory.flag("pz_cipher")) out.add(204);
+    }
+    catch (e) { /* no case yet */ }
+
+    return out;
+}
 const HOSTEL_FLOORS = 3;           // floors with a hall and rooms
 const EYE = 1.7;
 const DOOR_X = [-10.5, -3.5, 3.5, 10.5];
@@ -795,6 +830,8 @@ export class GhostSystem {
 
         const n = this.spawnPlan.node;
 
+        const amb = !!this.spawnPlan.ambush;
+
         this.spawnPlan = null;
 
         const m = this.model.root;
@@ -839,7 +876,7 @@ export class GhostSystem {
         this.state = mode;
         this.statueT = rnd(5, 8);
 
-        if (mode === "statue" || mode === "stand") {
+        if (mode === "statue" || mode === "stand" || amb) {
             this.faceTo(p.x, p.z, true);
         }
 
@@ -1384,6 +1421,34 @@ export class GhostSystem {
     // ==================================================
     pickWanderTarget() {
 
+        // half of the time he goes where the clues are, the room nearest to YOU first:
+        // he is always trying to stop you finishing the game
+        if (Math.random() < 0.5) {
+
+            const nums = clueRoomNums();
+
+            const cn = NAV.nodes.filter((n) => n.type === "room" && !n.locked && nums.has(n.room));
+
+            if (cn.length) {
+
+                const p = this.camera.position, pf = this.playerFloor();
+
+                const cand = cn.filter((n) => n.room !== this.lastClueRoom);
+
+                const list = (cand.length ? cand : cn).slice().sort((a, b) =>
+                    (Math.hypot(a.x - p.x, a.z - p.z) + Math.abs(a.fl - pf) * 12) -
+                    (Math.hypot(b.x - p.x, b.z - p.z) + Math.abs(b.fl - pf) * 12));
+
+                const n = pick(list.slice(0, Math.min(3, list.length)));
+
+                this.lastClueRoom = n.room;
+
+                this.patrolFl = n.fl;
+
+                return n;
+            }
+        }
+
         const seenSet = this.visitedNodes;
 
         const nodesOf = (f) => NAV.nodes.filter((n) => n.fl === f && !n.locked &&
@@ -1626,6 +1691,9 @@ export class GhostSystem {
 
         if (this.dead) return;
 
+        // ---------------- the player is down in the cellar ----------------
+        if (this.cellarVisit(dt)) return;
+
         // ---------------- not here ----------------
         if (this.state === "away") {
 
@@ -1651,6 +1719,9 @@ export class GhostSystem {
 
             return;
         }
+
+        // he pops up in the clue room you are standing in, face to face
+        if (this.state === "wander" && this.ambushCheck(dt)) return;
 
         // ---------------- here ----------------
         const model = this.model;
@@ -1975,6 +2046,209 @@ export class GhostSystem {
             if (this.state === "statue") this.vanish();
             else this.startKill(false);
         }
+    }
+
+    // the number of the dorm room the player is standing in (or null)
+    playerRoomNumber() {
+
+        const pf = this.playerFloor();
+
+        const p = this.camera.position;
+
+        if (pf > 2 || Math.abs(p.z) < 4.2 || Math.abs(p.z) > 15) return null;
+
+        let bi = 0;
+
+        for (let i = 1; i < 4; i++) if (Math.abs(ROOM_CX[i] - p.x) < Math.abs(ROOM_CX[bi] - p.x)) bi = i;
+
+        return (pf + 1) * 100 + (p.z < 0 ? bi + 1 : bi + 5);
+    }
+
+    // standing in a room that holds a clue: sometimes he is suddenly THERE
+    ambushCheck(dt) {
+
+        if (this.clock - (this.lastAmbush === undefined ? -999 : this.lastAmbush) < 40) return false;
+
+        if (this.player.hidden) return false;
+
+        const rn = this.playerRoomNumber();
+
+        if (!rn || !clueRoomNums().has(rn)) return false;
+
+        if (Math.random() > dt * 0.06) return false;
+
+        const p = this.camera.position;
+
+        let best = null, bd = -1;
+
+        for (const n of NAV.nodes) {
+
+            if (n.type !== "room" || n.locked || n.room !== rn) continue;
+
+            const d = Math.hypot(n.x - p.x, n.z - p.z);
+
+            if (d >= 4.5 && d <= 12 && d > bd) { best = n; bd = d; }
+        }
+
+        if (!best) return false;
+
+        this.lastAmbush = this.clock;
+
+        this.despawn(true);
+
+        this.spawnPlan = { node: best, t: rnd(0.6, 1.0), ambush: true };
+
+        this.state = "pending";
+
+        audio.ghostSfx("breath", best.x, best.y + 1.3, best.z, 1.0);
+
+        ghostFx.x = best.x; ghostFx.z = best.z; ghostFx.y = best.y; ghostFx.power = 0.9;
+
+        return true;
+    }
+
+    // ---- the cellar: stay down there long enough and he comes for you.
+    // (the ladder is the way out: climb it and he gives up)
+    cellarVisit(dt) {
+
+        const c = this.camera.position;
+
+        const inC = c.y < -1.0 && c.x > CELLAR.x0 && c.x < CELLAR.x1 && c.z > CELLAR.z0 && c.z < CELLAR.z1;
+
+        let cv = this.cellarV;
+
+        if (!inC) {
+
+            if (cv) {
+
+                this.cellarV = null;
+
+                this.despawn(true);
+
+                this.cool = rnd(10, 18);
+
+                audio.stopGhostWalk();
+            }
+
+            return false;
+        }
+
+        if (!cv) {
+
+            cv = this.cellarV = { stay: 0, phase: "wait", wait: rnd(14, 26), t: 0, will: Math.random() < 0.8 };
+
+            if (this.visible) this.despawn(true);
+        }
+
+        const model = this.model, pos = model.root.position;
+
+        cv.stay += dt;
+
+        if (cv.phase === "wait") {
+
+            if (cv.will && cv.stay > cv.wait) { cv.phase = "warn"; cv.t = 2.2; this.warnPos = null; }
+
+            return true;
+        }
+
+        if (cv.phase === "warn") {
+
+            cv.t -= dt;
+
+            ghostFx.power = 0.6 + Math.sin(this.clock * 22) * 0.3;
+
+            if (cv.t > 2.0) {
+
+                audio.ghostSfx("breath", (CELLAR.x0 + CELLAR.x1) / 2, CELLAR.y + 1.3, (CELLAR.z0 + CELLAR.z1) / 2, 1.0);
+
+                inventory.say("The air in the cellar turns cold.", 2.5);
+            }
+
+            if (cv.t <= 0) {
+
+                // appear in the corner farthest from you
+                let best = null, bd = -1;
+
+                for (const [x, z] of [[CELLAR.x0 + 0.5, CELLAR.z0 + 0.5], [CELLAR.x1 - 0.5, CELLAR.z0 + 0.5], [CELLAR.x0 + 0.5, CELLAR.z1 - 0.5], [CELLAR.x1 - 0.5, CELLAR.z1 - 0.5]]) {
+
+                    const d = Math.hypot(x - c.x, z - c.z);
+
+                    if (d > bd) { bd = d; best = [x, z]; }
+                }
+
+                pos.set(best[0], CELLAR.y, best[1]);
+
+                this.gy = CELLAR.y;
+
+                this.visible = true;
+
+                model.setVisible(true);
+
+                model.rope.reset(model.handPos(this.hand));
+
+                this.flickerT = 0.8;
+
+                this.yaw = Math.atan2(-(c.x - best[0]), -(c.z - best[1]));
+
+                cv.phase = "come";
+
+                audio.play("thud", { vol: 0.8, send: 0.4, ui: true });
+            }
+
+            return true;
+        }
+
+        // ---- he comes ----
+        const dx = c.x - pos.x, dz = c.z - pos.z, d = Math.hypot(dx, dz) || 1;
+
+        this.yaw = Math.atan2(-dx, -dz);
+
+        model.root.rotation.y = this.yaw;
+
+        model.floorY = CELLAR.y;
+
+        this.speed = d > 5 ? 1.9 : 3.2;
+
+        pos.x += (dx / d) * this.speed * dt;
+
+        pos.z += (dz / d) * this.speed * dt;
+
+        pos.y = CELLAR.y;
+
+        model.eyePos(this.eye);
+
+        model.update(dt, { speed: this.speed, run: false, look: c, open: undefined, calm: 1, leftTo: null, rightTo: null }, null, false);
+
+        if (this.flickerT > 0) { this.flickerT -= dt; model.setVisible(Math.sin(this.clock * 45) > -0.1 || this.flickerT <= 0); }
+
+        audio.ghostWalk(pos.x, pos.y + 0.1, pos.z, this.speed, false);
+
+        ghostFx.x = pos.x; ghostFx.y = pos.y; ghostFx.z = pos.z;
+
+        ghostFx.power = Math.max(0.5, 1 - d / 8);
+
+        audio.ghostFear = Math.max(audio.ghostFear || 0, 1 - d / 9);
+
+        if (d < 1.0) {
+
+            audio.stopMove();
+
+            audio.stopStairs();
+
+            audio.stopGhostWalk();
+
+            audio.play("thud", { vol: 1.0, send: 0.3, ui: true });
+
+            audio.ghostKill();
+
+            this.flash(1);
+
+            this.cellarV = null;
+
+            this.showDeath(null, "Ramu was waiting for you in the cellar. The trapdoor closed. Nobody heard you.");
+        }
+
+        return true;
     }
 
     startChase() {

@@ -69,7 +69,7 @@ export class InteractionSystem {
 
         if (hits.length === 0) {
 
-            this.hide();
+            if (!this.always()) this.hide();
 
             return;
         }
@@ -78,7 +78,7 @@ export class InteractionSystem {
 
         if (hit.distance > this.maxDistance) {
 
-            this.hide();
+            if (!this.always()) this.hide();
 
             return;
         }
@@ -100,14 +100,29 @@ export class InteractionSystem {
 
                 if (b.distance < hit.distance - 0.03) {
 
-                    this.hide();
+                    if (!this.always()) this.hide();
 
                     return;
                 }
             }
         }
 
-        const object = hit.object;
+        this.select(hit.object);
+    }
+
+    // an object that is "always" reachable (userData.always() is true) answers
+    // even when you are not aiming at it (e.g. the bed in Ramu's room)
+    always() {
+
+        for (const o of this.interactableObjects) {
+
+            if (o.userData.always && o.userData.always()) { this.select(o); return true; }
+        }
+
+        return false;
+    }
+
+    select(object) {
 
         this.currentObject = object;
 

@@ -1,5 +1,5 @@
 // ======================================================
-// A NEW CASE FOR EVERY NEW GAME   (9 puzzles, all easy to follow)
+// A NEW CASE FOR EVERY NEW GAME   (10 puzzles, all easy to follow)
 //
 // Everything the puzzles need is made up fresh when you start a new game
 // (Continue keeps the same case, it is saved in localStorage):
@@ -10,11 +10,12 @@
 //   book     bookcase, mess hall pull out the book with the colour written in a note
 //   fuse     terrace fuse box    the two cards say which switches must be UP
 //
-//   CHAPTER 2 (5 puzzles)
+//   CHAPTER 2 (6 puzzles)
 //   radio    reception radio     Old Gold FM = Anna FM + a number given in a note
 //   keys     reception key board Gopal's room = "the 2nd room from the stairs" -> 302
 //   rat      mess hall rat hole  find the cheese in a room, put it at the rat hole
 //   lever    terrace back wall   find the missing lever handle in a room, fit it, pull
+//   cellar   tin box in the CELLAR  code = the chalk tally marks on the 4 cellar walls (N, E, S, W)
 //   candles  terrace altar       light the 7 candles in the order of the 3 diary pages
 //
 // hint(id) tells where every note / item of a puzzle lies, so the search is
@@ -109,20 +110,24 @@ export function makeCase() {
     // rooms of the notes and items (Room 204 is always the first: its desk, its trunk)
     const rooms = shuffle(ROOM_POOL);
 
-    const slots = ["ramuNote", "cipher", "postcard", "bookNote", "card1", "card2", "stations", "draft", "k1", "k2", "d1", "d2", "d3", "cheese", "handle", "gatekey"];
+    const slots = ["ramuNote", "cipher", "postcard", "bookNote", "card1", "card2", "stations", "draft", "k1", "k2", "d1", "d2", "d3", "cheese", "handle", "gatekey", "cellarNote"];
+
+    // the cellar: four walls, a tally of 1-9 chalk strokes on each (north, east, south, west)
+    const tally = [1 + rnd(9), 1 + rnd(9), 1 + rnd(9), 1 + rnd(9)];
 
     const at = { names: "f2r4" };
 
     slots.forEach((s, i) => { at[s] = rooms[i]; });
 
     return {
-        v: 4, laughers, struck, list, code: "204" + K,
+        v: 5, laughers, struck, list, code: "204" + K,
         word, about, scramble,
         fuse: { sol, first: upSorted.slice(0, 2).sort(), second: upSorted.slice(2) },
         radio: { anna, plus, roots: answer + 3, night: 104 + rnd(4), answer },
         keys: { pos: p, room: String(300 + p) },
         book: { color: bookColor, shelf: shuffle(BOOK_COLORS) },
         candles: { order: laughers.slice(), shown: shuffle(laughers) },
+        cellar: { tally, code: tally.join("") },
         rooms: at
     };
 }
@@ -135,7 +140,7 @@ function load() {
 
         const j = JSON.parse(localStorage.getItem(KEY));
 
-        if (j && j.v === 4) return j;
+        if (j && j.v === 5) return j;
     }
     catch (e) { /* none */ }
 
@@ -204,6 +209,9 @@ export function pieceText(key) {
         case "k2":
             return { title: "Warden's room list (2 of 2)", text: "THIRD FLOOR - who sleeps where\n\nGopal sleeps in the " + ORD[c.keys.pos].toUpperCase() + " room from the stairs.\n\n(Gopal is the quiet boy who never laughed.)" };
 
+        case "cellarNote":
+            return { title: "Ramu's secret (folded very small)", text: "I have a secret place now.\n\nNobody goes down to the CELLAR, under the dorm room on the ground floor. I keep my savings box there, the little tin one. (The trapdoor key is hidden somewhere in the hostel.)\n\nThe lock has four numbers. I made it easy, so I will never forget:\n\n   count the chalk strokes I drew on the four walls\n   (a bundle with a slash across is 5)\n   and read them in the way the sun goes round:\n\n   NORTH  ->  EAST  ->  SOUTH  ->  WEST\n\nEach wall has a little letter in the corner, so you will not get lost.\n\n- Ramu" };
+
         case "d1": case "d2": case "d3": {
             const o = c.candles.order;
             const i = Number(key[1]);
@@ -233,7 +241,8 @@ export function pieceAt(tag) {
 export const PAPER_PUZZLE = {
     names: "drawer", cipher: "cipher", postcard: "cipher", bookNote: "book",
     card1: "fuse", card2: "fuse", stations: "radio", draft: "radio",
-    k1: "keys", k2: "keys", d1: "candles", d2: "candles", d3: "candles"
+    k1: "keys", k2: "keys", d1: "candles", d2: "candles", d3: "candles",
+    cellarNote: "cellar"
 };
 
 // the puzzle whose paper lies in this room (or null)
@@ -282,6 +291,8 @@ export function hint(id) {
 
         case "lever": return "The broken lever is on the back wall of the terrace room, left of the altar. The missing handle is lying in " + whereIs("handle") + ".";
 
+        case "cellar": return "The trapdoor to the CELLAR is in Room 106 (ground floor, south side). The cellar key is hidden in the hostel: the left stairs, the reception desk, or a dorm trunk. Ramu's note about his tin box: " + whereIs("cellarNote") + ".";
+
         case "candles": return "The seven candles are on the altar in the terrace room. Ramu's diary pages: " + whereIs("d1") + ", " + whereIs("d2") + " and " + whereIs("d3") + ".";
     }
 
@@ -308,7 +319,8 @@ export function spoilers() {
         "6 keys    (reception key board)  type " + c.keys.room + "   [" + ORD[c.keys.pos] + " room from the stairs]",
         "7 rat     (mess hall rat hole)  cheese is in " + whereIs("cheese") + "; stand at the hole and press E",
         "8 lever   (terrace back wall)  handle is in " + whereIs("handle") + "; press E at the lever twice (fit, then pull)",
-        "9 candles (terrace altar)  order: " + c.candles.order.join(" > "),
+        "9 cellar  (tin box in the cellar, SW corner)  type " + c.cellar.code + "   [chalk strokes N, E, S, W = " + c.cellar.tally.join(", ") + "; note in " + whereIs("cellarNote") + "]",
+        "10 candles (terrace altar)  order: " + c.candles.order.join(" > "),
         "+ back stairs: the iron key is in " + whereIs("gatekey") + "; unlock the cage gate (west side, behind the hostel), climb the spiral to the terrace",
         "+ ending: after the letter, the hidden door opens in the mess hall (north wall, middle); go through it and put the letter on Ramu's bed",
         "",

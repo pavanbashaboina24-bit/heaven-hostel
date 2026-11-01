@@ -2,8 +2,12 @@ import * as THREE from
 "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
 import {
-    M, U, newBuilder, bulb, plateTex, getPlayer, doll
+    M, U, newBuilder, bulb, plateTex, getPlayer, doll, canvasTexture
 } from "./haunted.js";
+
+import { addStation } from "./puzzles.js";
+
+import { theCase } from "./gen.js";
 
 import { inventory, addPickup } from "./inventory.js";
 
@@ -12,6 +16,8 @@ import { DIARY } from "./lore.js";
 import { audio } from "./audio.js";
 
 import { events } from "./events.js";
+
+import { story } from "./story.js";
 
 
 // ======================================================
@@ -25,6 +31,9 @@ import { events } from "./events.js";
 //   - the lid closes again after you leave
 //   - down there: bones, a cage, chains, a ritual circle,
 //     a doll facing the wall, and an old diary
+//   - THE 10th PUZZLE lives here: Ramu's little tin box (south-west corner).
+//     Its 4-digit code = the chalk strokes on the 4 walls (north, east, south,
+//     west). The note that explains it lies in a random room of the hostel.
 //
 // To change where things are, edit the numbers below.
 // ======================================================
@@ -584,6 +593,94 @@ function buildRoom(scene, collisionSystem, interaction) {
 
         R.box(iron, 0.5, 0.035, 0.035, lx, 0.3 + i * 0.3, lz);
     }
+
+    // ---- THE 10th PUZZLE: chalk strokes on the four walls + Ramu's tin box ----
+    const paintTally = (g, w, h, n, letter) => {
+
+        g.clearRect(0, 0, w, h);
+
+        g.fillStyle = "rgba(20,18,16,0.55)"; g.fillRect(0, 0, w, h);
+
+        g.strokeStyle = "rgba(235,230,215,0.92)"; g.lineWidth = 6; g.lineCap = "round";
+
+        const bundles = Math.ceil(n / 5);
+
+        for (let b = 0; b < bundles; b++) {
+
+            const left = Math.min(5, n - b * 5), x0 = 34 + (b % 2) * 100, y0 = 52 + Math.floor(b / 2) * 80;
+
+            for (let k = 0; k < Math.min(4, left); k++) { g.beginPath(); g.moveTo(x0 + k * 16, y0); g.lineTo(x0 + k * 16 + (Math.random() * 3 - 1.5), y0 + 54); g.stroke(); }
+
+            if (left === 5) { g.beginPath(); g.moveTo(x0 - 10, y0 + 46); g.lineTo(x0 + 64, y0 + 6); g.stroke(); }
+        }
+
+        g.fillStyle = "rgba(255,200,120,0.9)"; g.font = "bold 30px Georgia"; g.fillText(letter, w - 40, 36);
+    };
+
+    const walls = [["N", 0, -HZ + 0.035, 0, -1.0], ["E", HX - 0.035, 0, -Math.PI / 2, 1.8], ["S", 0, HZ - 0.035, Math.PI, 1.6], ["W", -HX + 0.035, 0, Math.PI / 2, -1.2]];
+
+    const tallies = [];
+
+    walls.forEach(([letter, wx, wz, ry, along], i) => {
+
+        const tex = canvasTexture(256, 192, (g, w, h) => paintTally(g, w, h, theCase().cellar.tally[i], letter));
+
+        tallies.push({ tex, letter, i });
+
+        const x = letter === "N" || letter === "S" ? along : wx;
+
+        const z = letter === "E" || letter === "W" ? along : wz;
+
+        R.pln(new THREE.MeshBasicMaterial({ map: tex, color: 0xb8b0a0 }), 1.15, 0.86, x, 2.75, z, { ry });
+    });
+
+    // a new game = new numbers: paint the walls again
+    inventory.resetHooks.push(() => {
+
+        for (const t of tallies) {
+
+            const cv = t.tex.image;
+
+            paintTally(cv.getContext("2d"), cv.width, cv.height, theCase().cellar.tally[t.i], t.letter);
+
+            t.tex.needsUpdate = true;
+        }
+    });
+
+    // the tin box (south-west corner): a lid that springs open when it is solved
+    const tinMat = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.55, metalness: 0.6 });
+
+    const tinX = -HX + 0.65, tinZ = HZ - 0.65;
+
+    R.box(tinMat, 0.6, 0.26, 0.4, tinX, 0.0, tinZ);
+
+    R.collider(0.65, 0.3, 0.45, tinX, 0, tinZ);
+
+    R.box(iron, 0.08, 0.06, 0.02, tinX, 0.2, tinZ - 0.21);
+
+    const lidPivot = new THREE.Group();
+
+    lidPivot.position.set(tinX, 0.26, tinZ + 0.2);
+
+    const lid = new THREE.Mesh(U.box, tinMat);
+
+    lid.scale.set(0.62, 0.04, 0.42);
+
+    lid.position.set(0, 0.02, -0.2);
+
+    lidPivot.add(lid);
+
+    R.group.add(lidPivot);
+
+    const syncLid = () => { lidPivot.rotation.x = story.solved("cellar") ? 1.9 : 0; };
+
+    syncLid();
+
+    inventory.resetHooks.push(syncLid);
+
+    events.on("puzzle-solved", (id) => { if (id === "cellar") syncLid(); });
+
+    addStation(interaction, R.group, { id: "cellar", label: "Open Ramu's tin box", x: tinX, y: 0.3, z: tinZ, sx: 1.1, sy: 0.9, sz: 1.0 });
 
     // ---- one weak bulb that flickers ----
     bulb(R, 0, 0.2, true, "U", { y: 3.0, top: 3.65 });

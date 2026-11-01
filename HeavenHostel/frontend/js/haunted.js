@@ -27,17 +27,33 @@ import { events } from "./events.js";
 // the ghost tells the lights where he is (see ghosts.js)
 export const ghostFx = { x: 0, y: 0, z: 0, power: 0, flashlight: 0 };
 
+// phones have small, dim screens: the same game, but brighter
+const PHONE = (() => {
+
+    try {
+
+        const q = new URLSearchParams(location.search).get("touch");
+
+        if (q === "1") return true;
+
+        if (q === "0") return false;
+
+        return matchMedia("(pointer: coarse)").matches || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    }
+    catch (e) { return false; }
+})();
+
 export const SETTINGS = {
 
-    ambient: 0.46,         // overall darkness (lower = darker)
+    ambient: PHONE ? 1.05 : 0.46,         // overall darkness (lower = darker)
 
-    fogDensity: 0.066,    // thicker fog = scarier
+    fogDensity: PHONE ? 0.045 : 0.066,    // thicker fog = scarier
 
-    flashlight: 95,       // flashlight strength
+    flashlight: PHONE ? 150 : 95,         // flashlight strength
 
-    bulb: 16,             // strength of the flickering room bulbs
+    bulb: PHONE ? 26 : 16,                // strength of the flickering room bulbs
 
-    vignette: true        // dark screen edges
+    vignette: true                        // dark screen edges
 };
 
 
@@ -2657,7 +2673,7 @@ export function setupHauntedAtmosphere(scene) {
 
     ambientLight = new THREE.AmbientLight(0x6a7896, SETTINGS.ambient);
 
-    hemiLight = new THREE.HemisphereLight(0x39465e, 0x0c0a08, 0.35);
+    hemiLight = new THREE.HemisphereLight(0x39465e, 0x0c0a08, PHONE ? 0.8 : 0.35);
 
     scene.add(ambientLight);
 
@@ -2768,7 +2784,7 @@ export function attachFlashlight(camera) {
         v.style.cssText =
             "position:fixed;inset:0;pointer-events:none;z-index:2;" +
             "background:radial-gradient(ellipse at center," +
-            "rgba(0,0,0,0) 45%,rgba(0,0,0,0.6) 100%);";
+            (PHONE ? "rgba(0,0,0,0) 55%,rgba(0,0,0,0.38) 100%);" : "rgba(0,0,0,0) 45%,rgba(0,0,0,0.6) 100%);");
 
         v.id = "gameVignette";
 
@@ -3629,7 +3645,7 @@ export function setBrightness(v) {
 
     if (ambientLight) ambientLight.intensity = SETTINGS.ambient * v;
 
-    if (hemiLight) hemiLight.intensity = 0.35 * v;
+    if (hemiLight) hemiLight.intensity = (PHONE ? 0.8 : 0.35) * v;
 }
 
 // every door shut again (new game) - silently

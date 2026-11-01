@@ -4,7 +4,7 @@ import * as THREE from
 import {
     RB, M, U, anim, mulberry32, canvasTexture, once, blob, crack,
     bloodDrips, plateTex, textTex, newBuilder, bulb, applyBoxUV,
-    registerDoor, mergeMeshes, placeSpider, placeWeb, getPlayer
+    registerDoor, mergeMeshes, placeSpider, placeWeb, getPlayer, frameHooks
 } from "./haunted.js";
 
 import { events } from "./events.js";
@@ -1777,6 +1777,34 @@ function buildGate(R, rng) {
 
     let gateHits = 0;
 
+    // ---- THE TRAP: you open the gate, walk in ... and it closes behind you.
+    // Heaven Hostel stays locked until Ramu's story is over.
+    const lockedIn = () => inventory.flag("gate_locked_in");
+
+    frameHooks.push(() => {
+
+        if (lockedIn() || !inventory.flag("gate_broken") || !handles[0].isOpen) return;
+
+        const p = getPlayer();
+
+        // far enough inside that the swinging leaves cannot touch you
+        if (!p || p.hidden || story.busy || p.pos.x > W - 2.8 || Math.abs(p.pos.z) > 6) return;
+
+        inventory.setFlag("gate_locked_in");
+
+        handles.forEach((hd) => hd.setOpen(false));
+
+        setTimeout(() => {
+
+            audio.play("slam", { vol: 1.3, send: 0.3, ui: true });
+
+            audio.lockHit(3);
+
+            story.lockedIn();
+
+        }, 700);
+    });
+
     const toggleAll = () => {
 
         // the chain and padlock: break them with the stone
@@ -1819,6 +1847,15 @@ function buildGate(R, rng) {
             return;
         }
 
+        if (lockedIn()) {
+
+            audio.doorLocked();
+
+            inventory.say("The gate will not move. The chain is wrapped tight.\nRamu is watching you.", 3.5);
+
+            return;
+        }
+
         const next = !handles[0].isOpen;
 
         handles.forEach((hd) => hd.setOpen(next));
@@ -1831,6 +1868,7 @@ function buildGate(R, rng) {
         lf.trig.userData.getPrompt = () =>
             !inventory.flag("gate_broken")
                 ? (inventory.has("gate_stone") ? "Press E - Smash the lock with the stone" : "Press E - The gate is chained shut")
+                : lockedIn() ? "The gate is locked"
                 : "Press E - " + (handles[0].isOpen ? "Close" : "Open") + " the gate";
 
         lf.trig.userData.interact = toggleAll;

@@ -9,6 +9,7 @@
 //   keys     Reception key board 3-digit room code       (chapter 2)
 //   rat      (secrets.js)        feed the rat            (chapter 2)
 //   lever    (secrets.js)        fit the lever handle    (chapter 2)
+//   cellar   Tin box, the cellar 4-digit code from the chalk strokes   (chapter 2)
 //   candles  Altar, terrace room 7 candles in order      (chapter 2, last)
 //
 // All screens use the keyboard only (the game keeps the mouse locked):
@@ -69,6 +70,9 @@ function frame(title, desc, footer) {
 
     ui();
 
+    // on a phone the footer talks about the on-screen keys
+    if (document.body.classList.contains("touch")) footer = "Tap the keys  -  OK to try  -  X to leave";
+
     box.innerHTML = "";
 
     panel = document.createElement("div");
@@ -95,6 +99,8 @@ function frame(title, desc, footer) {
 export function closePuzzle() {
 
     if (box) box.classList.remove("on");
+
+    delete document.body.dataset.puz;
 
     inventory.reading = false;
 
@@ -450,6 +456,13 @@ export const PUZZLES = {
         wrong: "That hook only holds a rusty key. It is not his."
     },
 
+    cellar: {
+        id: "cellar", type: "code", level: 2, title: "Ramu's tin box",
+        desc: "A small tin box with four number wheels, hidden in the cellar.\nThe four walls have chalk strokes on them (a slashed bundle = 5). Type the number of strokes: NORTH, EAST, SOUTH, WEST.\n(Ramu's secret note says so. Find it in the hostel.)",
+        get answer() { return theCase().cellar.code; },
+        wrong: "The wheels click, but the lid stays shut. Count the strokes again, wall by wall."
+    },
+
     candles: {
         id: "candles", type: "sequence", level: 2, title: "The seven candles",
         desc: "Seven candles on the altar, each with a name scratched into the wax.\nPress a candle's number to light it. Light them in the order the boys joined in (1st, 2nd, 3rd ...).\nBackspace takes back the last one.",
@@ -465,6 +478,9 @@ export function openPuzzle(id) {
     if (!def) return;
 
     audio.puzzle("tick");
+
+    // tells the phone keypad which keys to show
+    document.body.dataset.puz = def.type === "code" ? "digits" : def.type === "word" ? "letters" : def.type === "switches" ? "switch" : def.type === "tuner" ? "arrows" : "digits";
 
     if (def.type === "code" || def.type === "word") codeLock(def);
     else if (def.type === "switches") switches(def);

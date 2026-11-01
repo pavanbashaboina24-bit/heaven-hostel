@@ -1,6 +1,6 @@
 # Game design notes
 
-* **Loop:** explore -> find notes -> solve a puzzle -> a clue page + the next hint -> ... -> nine puzzles -> hidden door -> ending.
+* **Loop:** explore -> find notes -> solve a puzzle -> a clue page + the next hint -> ... -> ten puzzles -> hidden door -> ending.
 * **Ghost:** patrols every floor slowly, 24/7. Kills only when it sees you. Hiding is safe unless it SAW you hide. The old bell = "I give up".
 * **Fairness:** every note of a puzzle lies in a fixed, hinted room. Puzzles are plain: one rule, one answer.
 * **Replay:** `gen.js` makes a new case (answers and rooms) for every new game.

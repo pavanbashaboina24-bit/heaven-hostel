@@ -1,7 +1,7 @@
 # Heaven Hostel
 
 A first-person horror mystery that runs in the browser (three.js). A boy named Ramu died in Room 204.
-Find out why, solve his nine puzzles, and give his letter back.
+Find out why, solve his ten puzzles, and give his letter back.
 
 * Play on a **computer** (WASD + mouse) or a **phone / tablet** (touch controls appear by themselves).
 * Spoilers and answers: `docs/puzzles.md`  (or press F12, type `hhSpoiler()` in the game).
