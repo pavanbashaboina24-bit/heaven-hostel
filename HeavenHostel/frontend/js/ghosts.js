@@ -637,6 +637,7 @@ export class GhostSystem {
         this.visitedNodes.clear();
         this.patrolFl = null;
         this.suspended = false;
+        this.summoned = false;
 
         ghostFx.power = 0;
         ghostFx.flashlight = 0;
@@ -1450,7 +1451,38 @@ export class GhostSystem {
         return n;
     }
 
+    // back to walking round the hostel (slowly, all floors, never standing still)
+    toWander() {
+
+        this.state = "wander";
+
+        this.path = [];
+
+        this.dest = null;
+
+        this.checking = null;
+
+        this.targets = [];
+
+        this.cur = null;
+
+        this.linger = 0;
+
+        this.afterLinger = false;
+
+        this.pause = 0.2;
+    }
+
     beginSearch(center, fl, urgent) {
+
+        // he does NOT stand about searching: unless he SAW you slip into a hiding place
+        // he simply goes on roaming (hide = he walks past)
+        if (!this.witness) {
+
+            this.toWander();
+
+            return;
+        }
 
         this.state = "search";
 
@@ -1460,6 +1492,20 @@ export class GhostSystem {
 
         this.linger = 0;
         this.checking = null;
+
+        // the one hiding place he saw you use: straight there, no other places
+        if (this.witness) {
+
+            this.searchT = 12;
+
+            this.targets = [{ kind: "spot", spot: this.witness, sure: true }];
+
+            this.tIdx = 0;
+
+            this.nextTarget();
+
+            return;
+        }
 
         // targets: the centre, the hiding places near it, a couple of rooms
         const list = [];
@@ -1529,6 +1575,8 @@ export class GhostSystem {
     resolveCheck(spot, sure) {
 
         this.checking = null;
+
+        this.witness = null;
 
         const p = this.player;
 
@@ -1661,8 +1709,7 @@ export class GhostSystem {
                     move = true;
                 }
 
-                // he dies away when his time is up and nobody is looking
-                if (this.life <= 0 && !this.playerSeesGhost()) this.vanish();
+                // (he no longer vanishes: he walks the hostel 24 hours a day)
 
                 break;
             }
@@ -1761,7 +1808,7 @@ export class GhostSystem {
                     if (cur && cur.kind === "spot") {
 
                         this.checking = cur;
-                        this.linger = 2.3;
+                        this.linger = 1.2;
 
                         this.faceTo(cur.spot.pos.x, cur.spot.pos.z, false);
                     }
@@ -1799,6 +1846,9 @@ export class GhostSystem {
                 calm = 0;
 
                 open = 1;
+
+                // (a ghost called by the bell never loses you)
+                if (this.summoned) { this.seen = true; this.loseT = 0; }
 
                 if (this.seen) this.loseT = 0; else this.loseT += dt;
 
@@ -2034,6 +2084,9 @@ export class GhostSystem {
     startKill(fromHiding) {
 
         if (this.kill || this.dead) return;
+
+        // called by the bell: he screams as he reaches you
+        if (this.summoned) audio.play("scream", { vol: 1.0, send: 0.3, ui: true });
 
         const player = this.player;
 
@@ -2728,6 +2781,67 @@ export class GhostSystem {
         if (this.diffEl) this.diffEl.style.display = on ? "block" : "none";
     }
 
+    // the old bell: the ghost comes, finds you wherever you are, and kills you
+    summon() {
+
+        if (!this.enabled || this.kill || this.dead || this.suspended) return;
+
+        const c = this.camera.position;
+
+        const pf = this.playerFloor();
+
+        let cand = NAV.nodes.filter((n) => n.fl === pf && !n.locked && (n.type === "hall" || n.type === "room") &&
+            Math.hypot(n.x - c.x, n.z - c.z) > 9 && Math.hypot(n.x - c.x, n.z - c.z) < 20);
+
+        if (!cand.length) cand = NAV.nodes.filter((n) => n.fl === pf && !n.locked && n.type === "hall");
+
+        if (!cand.length) cand = NAV.nodes.filter((n) => !n.locked && n.type === "hall");
+
+        const n = pick(cand);
+
+        if (this.player.hidden) this.player.exitHide();
+
+        this.summoned = true;
+
+        const pos = this.model.root.position;
+
+        pos.set(n.x, n.y, n.z);
+
+        this.gy = n.y;
+
+        this.fl = n.fl;
+
+        this.stairing = null;
+
+        this.curNode = n;
+
+        this.visible = true;
+
+        this.model.setVisible(true);
+
+        this.model.rope.reset(this.model.handPos(this.hand));
+
+        this.model.root.visible = true;
+
+        this.flickerT = 0.9;
+
+        this.speed = 0;
+
+        this.path = [];
+
+        this.dest = null;
+
+        this.state = "wander";
+
+        this.seen = true;
+
+        this.lastKnown.copy(c);
+
+        this.faceTo(c.x, c.z, true);
+
+        this.startChase();
+    }
+
     // falling from the roof / a window: no ghost needed
     fallDeath(drop) {
 
@@ -2739,7 +2853,9 @@ export class GhostSystem {
 
         audio.stopGhostWalk();
 
-        audio.play("ghostKill", { vol: 1.0, send: 0.3, ui: true });
+        audio.play("thud", { vol: 1.0, send: 0.3, ui: true });
+
+        audio.play("ghostKill", { vol: 0.7, send: 0.3, ui: true });
 
         this.flash(1);
 
@@ -2749,6 +2865,8 @@ export class GhostSystem {
     showDeath(roomNumber, custom) {
 
         if (!this.deathEl) return;
+
+        events.emit("player-died");
 
         const txt = this.deathEl.querySelector("#ghost-death-text");
 

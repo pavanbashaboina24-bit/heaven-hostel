@@ -125,6 +125,12 @@ export class InteractionSystem {
                 " - Press E to interact";
         }
 
+        // on a phone the buttons are called ACT and SIT
+        if (document.body.classList.contains("touch")) {
+
+            text = String(text).replace(/Press E to/g, "Tap ACT to").replace(/Press E/g, "Tap ACT").replace(/Press C/g, "Tap SIT");
+        }
+
         this.interactionMessage.textContent = text;
 
         this.interactionMessage.style.display = "block";

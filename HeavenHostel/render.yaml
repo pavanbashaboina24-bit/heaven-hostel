@@ -1,5 +1,16 @@
+# Render Blueprint: one Python web service that serves the game AND the API.
 services:
   - type: web
     name: heaven-hostel
-    runtime: static
-    staticPublishPath: ./HeavenHostel/frontend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd backend && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: HH_SECRET_KEY
+        generateValue: true
+      - key: HH_DATABASE
+        value: /tmp/hostel.db      # free plan: resets on restart. Use a Disk + /var/data/hostel.db to keep scores

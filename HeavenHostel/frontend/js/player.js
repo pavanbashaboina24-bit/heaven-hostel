@@ -221,26 +221,16 @@ export class Player {
     // MOUSE LOOK
     // ==================================================
 
-    setupMouseLook() {
-
-        document.addEventListener(
-            "mousemove",
-            (event) => {
-
-                if (
-                    document.pointerLockElement
-                    !== document.body
-                ) {
-                    return;
-                }
+    // turn the head by (mx, my) pixels: the mouse (locked pointer) and the finger (touch.js)
+    lookBy(mx, my) {
 
                 const sensitivity = this.sensitivity;
 
                 this.yaw -=
-                    event.movementX * sensitivity;
+                    mx * sensitivity;
 
                 this.pitch -=
-                    event.movementY * sensitivity;
+                    my * sensitivity;
 
                 const maxLook =
                     Math.PI / 2 - 0.1;
@@ -268,6 +258,22 @@ export class Player {
                     this.pitch =
                         Math.max(pLo, Math.min(pHi, this.pitch));
                 }
+    }
+
+    setupMouseLook() {
+
+        document.addEventListener(
+            "mousemove",
+            (event) => {
+
+                if (
+                    document.pointerLockElement
+                    !== document.body
+                ) {
+                    return;
+                }
+
+                this.lookBy(event.movementX, event.movementY);
             }
         );
     }

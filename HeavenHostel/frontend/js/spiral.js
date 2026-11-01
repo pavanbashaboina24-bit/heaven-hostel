@@ -323,20 +323,34 @@ export function buildSpiral(scene, cs, interaction) {
 
     gate.add(lock);
 
-    // a box that stops you while the gate is shut (world coordinates)
+    // what stops you while the gate is shut: a row of SMALL boxes along the gate line
+    // (one big box would reach into the cage and trap you inside it)
     const gx = S.cx + (hx + fx) / 2, gz = S.cz + (hz + fz) / 2;
 
-    const gateBlock = wallBox(gx, 0, gz, Math.abs(fx - hx) + 0.5, 2.5, Math.abs(fz - hz) + 0.5);
+    const gateBlocks = [];
+
+    for (let i = 0; i <= 6; i++) {
+
+        const t = i / 6;
+
+        gateBlocks.push(wallBox(S.cx + hx + (fx - hx) * t, 0, S.cz + hz + (fz - hz) * t, 0.32, 2.5, 0.32));
+    }
 
     let blocking = true;
 
     const setBlock = (on) => {
 
-        if (on && !blocking) { cs.objects.push(gateBlock); blocking = true; }
+        if (on && !blocking) { for (const b of gateBlocks) cs.objects.push(b); blocking = true; }
 
         if (!on && blocking) {
-            const i = cs.objects.indexOf(gateBlock);
-            if (i >= 0) cs.objects.splice(i, 1);
+
+            for (const b of gateBlocks) {
+
+                const i = cs.objects.indexOf(b);
+
+                if (i >= 0) cs.objects.splice(i, 1);
+            }
+
             blocking = false;
         }
     };
@@ -404,6 +418,8 @@ export function buildSpiral(scene, cs, interaction) {
 
             audio.keyUnlock();
 
+            audio.play("creak_1", { vol: 0.9, send: 0.25, t: 0.3 });
+
             inventory.say("The key turns. The old padlock falls open and the gate creaks wide.", 3.5);
 
             setBlock(false);
@@ -425,6 +441,25 @@ export function buildSpiral(scene, cs, interaction) {
 
         inventory.setFlag("spiral_shut");
 
+        // never close the gate ON the player: step him a little towards the middle
+        const p0 = getPlayer();
+
+        if (p0) {
+
+            const dx = p0.pos.x - gx, dz = p0.pos.z - gz;
+
+            const d = Math.hypot(dx, dz);
+
+            if (d < 1.6) {
+
+                const ux = (S.cx - gx) / (Math.hypot(S.cx - gx, S.cz - gz) || 1), uz = (S.cz - gz) / (Math.hypot(S.cx - gx, S.cz - gz) || 1);
+
+                p0.pos.x += ux * (1.6 - d);
+
+                p0.pos.z += uz * (1.6 - d);
+            }
+        }
+
         setBlock(true);
 
         tween(gate, "rotation.y", closedYaw, 250);
@@ -434,8 +469,8 @@ export function buildSpiral(scene, cs, interaction) {
         setTimeout(() => {
 
             story.pages([
-                "THE GATE SLAMS SHUT BEHIND YOU.\n\nThe lock turns by itself.\nSomewhere above you, slow footsteps start to walk.",
-                "YOU ARE LOCKED IN WITH THE GHOST.\n\nHeaven Hostel has been locked since the night Ramu died. No one who came in was ever allowed to leave.\n\nThere is only one way out: finish what he began.\nSolve his puzzles, find his letter, and the hostel will show you the way."
+                { img: "story_gate.jpg", title: "LOCKED IN", text: "THE GATE SLAMS SHUT BEHIND YOU.\n\nThe lock turns by itself.\nSomewhere above you, slow footsteps start to walk." },
+                { img: "story_gate.jpg", text: "YOU ARE LOCKED IN WITH THE GHOST.\n\nHeaven Hostel has been locked since the night Ramu died. No one who came in was ever allowed to leave.\n\nThere is only one way out: finish what he began.\nSolve his puzzles, find his letter, and the hostel will show you the way." }
             ], { last: "Enter  -  climb" });
 
         }, 700);
@@ -450,7 +485,7 @@ export function buildSpiral(scene, cs, interaction) {
         if (!p || story.busy) return;
 
         // as soon as you are inside the cage (a bit past the gate)
-        if (Math.hypot(p.pos.x - S.cx, p.pos.z - S.cz) < S.fence - 0.85 && p.pos.y < 3.5) welcome();
+        if (Math.hypot(p.pos.x - S.cx, p.pos.z - S.cz) < S.fence - 1.0 && p.pos.y < 3.5) welcome();
     });
 
     // ---------------------------------------------------- new game: lock it again

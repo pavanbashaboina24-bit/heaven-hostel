@@ -9,6 +9,7 @@ import { story } from "./story.js";
 import { locks } from "./locks.js";
 import { addStation } from "./puzzles.js";
 import { placeSecretItems } from "./secrets.js";
+import { trunkMaterials } from "./boxes.js";
 import { LETTERS, BOOKS, TRINKETS }
     from "./lore.js";
 
@@ -2282,7 +2283,8 @@ function buildRoom(ctx, rowN, col, roomNo) {
 
     const trunkX = freeSide < 0 ? R.lx0 + 0.35 : R.lx1 - 0.35;
 
-    R.box(m.iron, 0.6, 0.45, 0.95, trunkX, 0, 8.0);
+    // a painted hostel trunk with hero-fan / movie-fan posters (boxes.js)
+    R._m(U.box, trunkMaterials(roomNo, ctx.floorNumber), 0.6, 0.45, 0.95, trunkX, 0.225, 8.0, { keep: true });
 
     R.collider(0.62, 0.5, 0.97, trunkX, 0, 8.0);
 

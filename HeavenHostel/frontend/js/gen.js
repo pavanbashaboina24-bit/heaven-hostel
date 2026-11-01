@@ -27,7 +27,18 @@ const KEY = "hh_case";
 
 export const NAMES = ["Suresh", "Kiran", "Vamsi", "Naresh", "Chandu", "Bhanu", "Anil", "Mahesh", "Rajesh", "Praveen", "Teja", "Sandeep", "Harsha", "Manoj"];
 
-export const NICKS = ["BUMPKIN", "PEASANT", "SCARECROW", "MUDFOOT", "HAYSEED", "YOKEL"];
+// the trunk word: letters come jumbled, you type the word.  [word, what it is about]
+export const WORDS = [
+    ["TAMARIND", "the big tree by the bus stop of Ramu's village"],
+    ["VILLAGE", "the place Ramu came from"],
+    ["SCHOLAR", "what his teachers said Ramu was"],
+    ["LONELY", "how Ramu felt every single night"],
+    ["MOTHER", "the person who stitched his shirt"],
+    ["FRIEND", "the one thing Ramu never found here"],
+    ["SORRY", "the word nobody ever said to Ramu"],
+    ["LETTER", "what Ramu wrote and never posted"],
+    ["TERRACE", "the only place where his phone had a signal"]
+];
 
 export const BOOK_COLORS = ["RED", "GREEN", "BLUE", "YELLOW", "WHITE", "BLACK"];
 
@@ -46,9 +57,14 @@ const pick = (a) => a[rnd(a.length)];
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 export const roomName = (tag) => "Room " + (Number(tag[1]) * 100 + Number(tag[3]));
 
-// every letter moves ONE step forward (A->B).  Reading it = one step back.
-function caesar(s, k) {
-    return s.replace(/[A-Z]/g, (c) => String.fromCharCode((c.charCodeAt(0) - 65 + k) % 26 + 65));
+// the letters of a word in a different order (never the word itself)
+function jumble(w) {
+
+    let out = w;
+
+    for (let i = 0; i < 50 && out === w; i++) out = shuffle(w.split("")).join("");
+
+    return out;
 }
 
 const SW = ["A", "B", "C", "D", "E", "F"];
@@ -68,9 +84,9 @@ export function makeCase() {
 
     const list = shuffle([...laughers.map((n) => ({ n, s: false })), ...struck.map((n) => ({ n, s: true }))]);
 
-    const word = pick(NICKS);
+    const [word, about] = pick(WORDS);
 
-    const plain = "THEY CALLED ME " + word;
+    const scramble = jumble(word).split("").join(" ");
 
     // fuse box: 3 switches must be UP, the first two are on card 1, the third on card 2
     const up = shuffle([0, 1, 2, 3, 4, 5]).slice(0, 3);
@@ -101,7 +117,7 @@ export function makeCase() {
 
     return {
         v: 4, laughers, struck, list, code: "204" + K,
-        word, shift: 1, cipher: caesar(plain, 1),
+        word, about, scramble,
         fuse: { sol, first: upSorted.slice(0, 2).sort(), second: upSorted.slice(2) },
         radio: { anna, plus, roots: answer + 3, night: 104 + rnd(4), answer },
         keys: { pos: p, room: String(300 + p) },
@@ -162,10 +178,10 @@ export function pieceText(key) {
             return { title: "A boy's note, folded small", text: "To whoever finds this -\n\nMy name is Ramu. I came here from Kothapalli to study.\nIf the warden asks where he can find me, tell him the truth:\nRoom 204.\n\nI am tired of being the joke on every floor.\n\n- Ramu" };
 
         case "cipher":
-            return { title: "Notebook - the last page", text: "The last page of a school notebook. The writing is neat, but the words make no sense:\n\n" + c.cipher + "\n\nIn the margin: \"Amma's secret way. Her postcard explains it.\"\nBelow it, a tiny drawing of a trunk with a lock." };
+            return { title: "Notebook - the last page", text: "The last page of a school notebook. Ramu wrote one word with its letters in the WRONG order, so that nobody could read it:\n\n        " + c.scramble + "\n\nIn the margin: \"Amma's game. Put the letters right. Her postcard says what the word is about.\"\nBelow it, a tiny drawing of a trunk with a lock." };
 
         case "postcard":
-            return { title: "A postcard from home", text: "Ramu, my son,\n\nIf the other boys ever read your diary, write it our secret way:\nevery letter is written ONE step forward in the alphabet.\nSo B stands for A, C stands for B, and so on.\n\nTo read it, go ONE step BACK.\n(Example: the word DBU is CAT.)\n\nEat well. We are proud of you.\n\n- Amma" };
+            return { title: "A postcard from home", text: "Ramu, my son,\n\nRemember our old game? I write a word with its letters mixed up, and you put them back in order.\n(Example: TAC is CAT.)\n\nThis time the word is " + c.about + ".\n\nLock your trunk with it, so nobody can read your things.\nEat well. We are proud of you.\n\n- Amma" };
 
         case "bookNote":
             return { title: "The warden's note about Ramu", text: "Ramu loved books. He read all day, because nobody talked to him.\n\nThe book he loved most had a " + c.book.color + " cover.\nHe kept it in the old bookcase in the MESS HALL (ground floor).\n\nI never looked behind it. I should have." };
@@ -285,7 +301,7 @@ export function spoilers() {
         "SPOILERS - THIS GAME'S ANSWERS",
         "",
         "1 drawer  (reception)  code " + c.code + "   [204 + " + c.struck.length + " crossed-out names]",
-        "2 cipher  (Room 204 trunk)  word " + c.word + "   [every letter one step back]",
+        "2 trunk   (Room 204)  word " + c.word + "   [the notebook shows the letters jumbled: " + c.scramble + "]",
         "3 book    (mess hall bookcase)  pull the " + c.book.color + " book",
         "4 fuse    (terrace box)  UP: " + sw.join(", ") + "  (all others DOWN), then Enter",
         "5 radio   (reception)  tune to " + c.radio.answer.toFixed(1) + " MHz   [Anna " + c.radio.anna.toFixed(1) + " + " + c.radio.plus + "]",

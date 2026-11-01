@@ -368,11 +368,21 @@ class Inventory {
 
         const back = this.mode === "view" && this.current && this.current.fromBag;
 
+        // a solved clue paper crumbles to dust once you have read it
+        const gone = this.current && this.current.vanish;
+
         this.reading = false;
 
         this.mode = null;
 
         this.current = null;
+
+        if (gone && this.items.has(gone)) {
+
+            this.remove(gone);
+
+            this.say("The paper crumbles to dust in your hand.", 3);
+        }
 
         if (back) this.openBag();
     }

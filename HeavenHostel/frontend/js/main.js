@@ -26,6 +26,10 @@ import { ensureKeySpot } from "./yard.js";
 import { menu, settings } from "./menu.js";
 import { GhostSystem } from "./ghosts.js";
 import { events } from "./events.js";
+import { initTouch, IS_TOUCH } from "./touch.js";
+import "./bell.js";
+import "./ambience.js";
+import "./online.js";
 
 
 // =========================================
@@ -172,7 +176,28 @@ function applySettings(s) {
 
 function lockPointer() {
 
+    // a phone has no mouse to lock: the finger drags the view (touch.js)
+    if (IS_TOUCH) return;
+
     document.body.requestPointerLock();
+}
+
+// the pause menu (Esc / leaving pointer lock on a computer, the II button on a phone)
+function pauseGame() {
+
+    if (state.mode !== "playing") return;
+
+    state.mode = "paused";
+
+    for (const k in player.keys) player.keys[k] = false;
+
+    interactionSystem.hide();
+
+    menu.save(player);
+
+    menu.showPause();
+
+    audio.setPaused(true);
 }
 
 function startPlaying() {
@@ -205,25 +230,16 @@ function enterMenuMode() {
 
 document.addEventListener("pointerlockchange", () => {
 
+    if (IS_TOUCH) return;
+
     const locked = document.pointerLockElement === document.body;
 
-    if (!locked && state.mode === "playing") {
-
-        state.mode = "paused";
-
-        for (const k in player.keys) player.keys[k] = false;
-
-        interactionSystem.hide();
-
-        menu.save(player);
-
-        menu.showPause();
-
-        audio.setPaused(true);
-    }
+    if (!locked && state.mode === "playing") pauseGame();
 });
 
 document.addEventListener("pointerlockerror", () => {
+
+    if (IS_TOUCH) return;
 
     // the browser needs a moment before it lets us lock again
     if (state.mode === "playing") {
@@ -267,6 +283,7 @@ function retryGame() {
 ghosts.hooks.retry = retryGame;
 // the hidden room at the end: the ghost can not follow you there
 events.on("hidden-room", () => { ghosts.suspended = true; });
+events.on("hostel-again", () => { ghosts.suspended = false; ghosts.cool = 3; });
 story.onEnd = () => ghosts.hooks.menu();
 ghosts.hooks.menu = () => {
     ghosts.reset(false);
@@ -398,6 +415,36 @@ player.onStep = (running) => {
 };
 
 applySettings(settings);
+
+// phones: lighter graphics the first time, and the touch controls
+if (IS_TOUCH && !localStorage.getItem("hh_touch_q")) {
+
+    localStorage.setItem("hh_touch_q", "1");
+
+    settings.quality = "medium";
+
+    applySettings(settings);
+}
+
+initTouch({ player, interaction: interactionSystem, pause: pauseGame });
+
+// the old bell (bell.js): the ghost comes for you
+let bellBusy = false;
+
+events.on("ring-bell", () => {
+
+    if (bellBusy || ghosts.dead || state.mode !== "playing") return;
+
+    bellBusy = true;
+
+    audio.play("bell", { vol: 1.0, send: 0.4, ui: true });
+
+    inventory.say("You ring the old bell. Far away, something answers...", 3);
+
+    setTimeout(() => ghosts.summon(), 2600);
+
+    setTimeout(() => { bellBusy = false; }, 9000);
+});
 
 
 // =========================================

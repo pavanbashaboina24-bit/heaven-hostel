@@ -421,7 +421,7 @@ export const PUZZLES = {
 
     cipher: {
         id: "cipher", type: "word", level: 1, title: "The old trunk",
-        desc: "A brass lock with letter wheels.\nType the nickname the boys gave Ramu.\n(The notebook is in Amma's secret way: every letter is one step forward.)",
+        desc: "A brass lock with letter wheels.\nThe notebook has a word with its letters jumbled. Put the letters in order and type the word.\n(Amma's postcard says what the word is about.)",
         get answer() { return theCase().word; },
         wrong: "The lock does not budge."
     },

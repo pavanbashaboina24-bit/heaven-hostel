@@ -50,7 +50,9 @@ for (const k of ["room", "main", "gate"]) {
     }
 }
 for (const n of ["door_locked_new", "key_unlock", "lock_hit_1", "lock_hit_2", "lock_break",
-    "paper_1", "paper_2", "paper_3", "puz_tick", "puz_thunk", "puz_wrong", "drawer"]) {
+    "paper_1", "paper_2", "paper_3", "puz_tick", "puz_thunk", "puz_wrong", "drawer",
+    // new in v9: the old bell, a fall hitting the ground, a long scream, creaking wood, the roof wind
+    "bell", "thud", "scream", "creak_1", "creak_2", "creak_3", "wind", "whisper_loop"]) {
     NEW_SAMPLES[n] = n + ".wav";
 }
 

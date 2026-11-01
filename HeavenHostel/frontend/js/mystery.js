@@ -4,7 +4,7 @@ import * as THREE from
 import { M, U, newBuilder, bulb, canvasTexture, getPlayer } from "./haunted.js";
 import { inventory } from "./inventory.js";
 import { audio } from "./audio.js";
-import { story } from "./story.js";
+import { story, L1, L2 } from "./story.js";
 import { events } from "./events.js";
 import { tween } from "./secrets.js";
 
@@ -292,6 +292,36 @@ export function buildMystery(scene, cs, interaction) {
 
     interaction.add(trig);
 
+    // ---- the way back: a plain door in the south wall of the room ----
+    const exitFrame = new THREE.Mesh(U.box, darkWood);
+
+    exitFrame.scale.set(1.0, 2.1, 0.1);
+
+    exitFrame.position.set(ROOM.x, ROOM.y + 1.05, ROOM.z + hz - 0.04);
+
+    scene.add(exitFrame);
+
+    const exitTrig = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+
+    exitTrig.scale.set(1.4, 2.2, 1.2);
+
+    exitTrig.position.set(ROOM.x, ROOM.y + 1.1, ROOM.z + hz - 0.6);
+
+    exitTrig.visible = false;
+
+    scene.add(exitTrig);
+
+    exitTrig.userData.getPrompt = () => (done ? "" : "Press E - Go back to the hostel");
+
+    exitTrig.userData.interact = () => {
+
+        if (done) return;
+
+        events.emit("leave-room");
+    };
+
+    interaction.add(exitTrig);
+
     inventory.resetHooks.push(() => {
 
         done = false;
@@ -500,7 +530,9 @@ export function addSecretDoor(R) {
         going = false;
 
         // (once it has appeared it stays: Continue must never lock you out of the ending)
-        if (inventory.flag("door_revealed")) show(false);
+        const all = [...L1, ...L2].every((id) => story.solved(id));
+
+        if (inventory.flag("door_revealed") || all) show(false);
         else {
 
             hidden.visible = false;
@@ -513,6 +545,48 @@ export function addSecretDoor(R) {
         }
     };
 
+    // back out of Ramu's room into the mess hall
+    events.on("leave-room", () => {
+
+        if (going) return;
+
+        going = true;
+
+        fade(1, 800);
+
+        setTimeout(() => {
+
+            const p = getPlayer();
+
+            p.pos.set(DOOR.x, 1.7, DOOR.z + 1.4);
+
+            p.camY = p.pos.y;
+
+            p.yaw = Math.PI;
+
+            p.pitch = 0;
+
+            p.verticalVelocity = 0;
+
+            p.grounded = true;
+
+            p._airTop = null;
+
+            p.fatalFall = 0;
+
+            for (const k in p.keys) p.keys[k] = false;
+
+            p.camera.position.copy(p.pos);
+
+            events.emit("hostel-again");
+
+            fade(0, 1000);
+
+            setTimeout(() => { going = false; }, 600);
+
+        }, 900);
+    });
+
     // the story says: the door appears now
     events.on("reveal-door", () => {
 
@@ -521,6 +595,8 @@ export function addSecretDoor(R) {
         audio.play("slam", { vol: 1.0, send: 0.3 });
 
         audio.puzzle("thunk");
+
+        audio.play("creak_3", { vol: 0.9, send: 0.3, t: 0.8 });
 
         show(true);
     });

@@ -29,7 +29,7 @@ export const CLUES = {
     },
     cipher: {
         title: "Clue 2 - Ramu's diary",
-        text: "RAMU'S DIARY (from the trunk in Room 204)\n\nWeek 1.  The city is loud. The food is good. Amma, I will make you proud.\n\nWeek 2.  They laugh at the way I speak, the way I look, the clothes my mother stitched. They gave me a name: @WORD@. Now it follows me down every corridor.\n\nWeek 3.  It is worse. They hide my books. They knock on my door at night and run. When I came to the mess hall, the whole room went quiet and then laughed. I stopped eating there.\n\nThe only place that still feels like mine is the terrace. The phone catches a signal up there. I call Amma and say 'all is well'.\n\nTonight they locked the terrace door."
+        text: "RAMU'S DIARY (from the trunk in Room 204)\n\nWeek 1.  The city is loud. The food is good. Amma, I will make you proud.\n\nWeek 2.  They laugh at the way I speak, the way I look, the clothes my mother stitched. It follows me down every corridor. When the nights are loud I close my eyes and think of one word, the word I locked my trunk with: @WORD@.\n\nWeek 3.  It is worse. They hide my books. They knock on my door at night and run. When I came to the mess hall, the whole room went quiet and then laughed. I stopped eating there.\n\nThe only place that still feels like mine is the terrace. The phone catches a signal up there. I call Amma and say 'all is well'.\n\nTonight they locked the terrace door."
     },
     book: {
         title: "Clue 3 - Ramu's report card",
@@ -65,17 +65,18 @@ export const CLUES = {
 // CHAPTER 1 ENDS: THE STORY
 // ------------------------------------------------------
 export const STORY = [
-    "RAMU.\n\nA boy from Kothapalli, a small village.\nThe first in his family to study in the city.\nHis mother stitched his shirts. His father sold a cow for his fees.",
+    { img: "story_village.jpg", title: "RAMU", text: "RAMU.\n\nA boy from Kothapalli, a small village.\nThe first in his family to study in the city.\nHis mother stitched his shirts. His father sold a cow for his fees." },
 
-    "He came to Heaven Hostel in June.\n\nThe first week was quiet. Then the others noticed how he spoke, how he looked, what he wore. In the second week, one boy laughed. The next day, another.",
+    { img: "story_arrive.jpg", title: "JUNE", text: "He came to Heaven Hostel in June.\n\nThe first week was quiet. Then the others noticed how he spoke, how he looked, what he wore. In the second week, one boy laughed. The next day, another." },
 
-    "By the third week the whole hostel had joined in.\n\nThey gave him a name. They hid his books. They locked him out of the only place where he could call home.\n\nHe asked the warden twice to be moved. Twice he was told: 'Boys will be boys.'",
+    { img: "story_laugh.jpg", title: "THE LAUGHTER", text: "By the third week the whole hostel had joined in.\n\nThey gave him a name. They hid his books. They locked him out of the only place where he could call home.\n\nHe asked the warden twice to be moved. Twice he was told: 'Boys will be boys.'" },
 
-    "On the night of the 21st of June, Ramu could bear it no more. He died in Room 204 - the room where it all started.\n\nNobody told his family the reason. Nobody went to the village.",
+    { img: "story_night.jpg", title: "ROOM 204", text: "On the night of the 21st of June, Ramu could bear it no more. He died in Room 204 - the room where it all started.\n\nNobody told his family the reason. Nobody went to the village." },
 
-    "After that, the crying began.\n\nA week later, boys started to go missing. One saw a thin figure in the corridor. Within a month the hostel was empty.\n\nHe is not here to hurt anyone.\nHe is here because something he promised his mother was never finished.",
+    { img: "story_ghost_walk.jpg", title: "THE CRYING", text: "After that, the crying began.\n\nA week later, boys started to go missing. One saw a thin figure in the corridor. Within a month the hostel was empty.\n\nHe is not here to hurt anyone.\nHe is here because something he promised his mother was never finished." },
 
-    "You have learned who he was.\n\nNow find out what he wants.\n\n(Chapter 2 - The Last Wish)"
+    { img: "story_chapter2.jpg", title: "CHAPTER 2", text: "You have learned who he was.\n\nNow find out what he wants.\n\n(Chapter 2 - The Last Wish)" }
+
 ];
 
 export const LETTER = {
@@ -84,13 +85,19 @@ export const LETTER = {
 };
 
 export const REVEAL = [
-    "The letter is warm in your hands, as if someone has just let go of it.\n\nThen the whole hostel shudders. Far away, deep inside the walls, a heavy stone slides.",
-    "Somewhere inside Heaven Hostel, a door that was never there has opened.\n\nThe air that comes out of it smells of old paper and damp earth.\n\nGo back in. Find it.\n(The old mess hall, on the ground floor.)"
+    {
+        img: "story_door.jpg",
+        text: "The last candle burns with a steady flame.\n\nThen the whole hostel shudders. Far away, deep inside the walls, a heavy stone slides."
+    },
+    {
+        img: "story_door.jpg",
+        text: "Somewhere inside Heaven Hostel, a door that was never there has opened.\n\nThe air that comes out of it smells of old paper and damp earth.\n\nIt is in the old mess hall, on the ground floor: the north wall, opposite the bookcase.\n\nBut first Ramu's letter: it is still hidden where he used to sit alone."
+    }
 ];
 
 export const ENDING = [
-    "You lay the letter on the narrow bed, on top of the shirt his mother stitched.\n\nThe bulb stops flickering. For the first time, the little room is quiet.",
-    "A thin boy sits up on the edge of the bed. He is not angry. He is not frightening.\nHe reads the first line, and his shoulders, tight for so many years, finally relax.\n\n'Thank you,' he says. 'Someone asked.'",
-    "The walls of the room fade like breath on glass.\nYou are standing in the mess hall. The front door stands open, and for the first time since you came in, the hostel lets you go.\n\nBehind you, in a window on the second floor, a thin figure lifts a hand. Then the window is only a window.",
-    "Some days later, a bus stops at Kothapalli.\nUnder the tamarind tree, a woman opens a letter.\n\nTHE END\n\nThank you for playing Heaven Hostel."
+    { img: "story_room.jpg", text: "You lay the letter on the narrow bed, on top of the shirt his mother stitched.\n\nThe bulb stops flickering. For the first time, the little room is quiet." },
+    { img: "story_boy.jpg", text: "A thin boy sits up on the edge of the bed. He is not angry. He is not frightening.\nHe reads the first line, and his shoulders, tight for so many years, finally relax.\n\n'Thank you,' he says. 'Someone asked.'" },
+    { img: "story_freed.jpg", text: "The walls of the room fade like breath on glass.\nYou are standing in the mess hall. The front door stands open, and for the first time since you came in, the hostel lets you go.\n\nBehind you, in a window on the second floor, a thin figure lifts a hand. Then the window is only a window." },
+    { img: "story_village.jpg", title: "THE END", text: "Some days later, a bus stops at Kothapalli.\nUnder the tamarind tree, a woman opens a letter.\n\nTHE END\n\nThank you for playing Heaven Hostel." }
 ];
