@@ -27,7 +27,7 @@ import { menu, settings } from "./menu.js";
 import { GhostSystem } from "./ghosts.js";
 import { events } from "./events.js";
 import { initTouch, IS_TOUCH } from "./touch.js";
-import "./bell.js";
+import "./bell.js";   // (only tidies the old bell out of old saves now)
 import "./ambience.js";
 import "./online.js";
 
@@ -49,6 +49,11 @@ const camera = new THREE.PerspectiveCamera(
 
 // START: outside the gate, on the dirt road, looking at the hostel
 const START = { x: 38, y: 1.7, z: 0, yaw: Math.PI / 2 };
+
+inventory.camera = camera;   // (the things you pick up fly to the camera)
+
+// RETRY after a death: inside the compound, a few steps in from the gate
+const RETRY = { x: 21, y: 1.7, z: 0, yaw: Math.PI / 2 };
 
 camera.position.set(START.x, START.y, START.z);
 
@@ -277,7 +282,11 @@ function retryGame() {
     locks.refresh();
     story.refresh();
     menu.stopPractice();
-    placePlayer(START.x, START.y, START.z, START.yaw);
+    // after a death you come back INSIDE the gate (the gate stays shut behind you)
+    inventory.setFlag("gate_broken");
+    inventory.setFlag("gate_locked_in");
+    locks.refresh();
+    placePlayer(RETRY.x, RETRY.y, RETRY.z, RETRY.yaw);
     startPlaying();
 }
 ghosts.hooks.retry = retryGame;
@@ -428,23 +437,7 @@ if (IS_TOUCH && !localStorage.getItem("hh_touch_q")) {
 
 initTouch({ player, interaction: interactionSystem, pause: pauseGame });
 
-// the old bell (bell.js): the ghost comes for you
-let bellBusy = false;
-
-events.on("ring-bell", () => {
-
-    if (bellBusy || ghosts.dead || state.mode !== "playing") return;
-
-    bellBusy = true;
-
-    audio.play("bell", { vol: 1.0, send: 0.4, ui: true });
-
-    inventory.say("You ring the old bell. Far away, something answers...", 3);
-
-    setTimeout(() => ghosts.summon(), 2600);
-
-    setTimeout(() => { bellBusy = false; }, 9000);
-});
+// (the old bell that called the ghost is gone: no self-kill)
 
 
 // =========================================

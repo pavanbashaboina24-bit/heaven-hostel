@@ -8,7 +8,7 @@ import { story } from "./story.js";
 //   left thumb   : the round stick (walk; push to the edge to run)
 //   right thumb  : drag anywhere on the right side to look round
 //   buttons      : ACT (= E: open, pick up, hide, use)   SIT (= C)
-//                  JUMP   RUN (toggle)   LIGHT (= F torch)   BAG   BELL   pause
+//                  JUMP   RUN (toggle)   LIGHT (= F torch)   BAG   pause
 //   notes/pickups: real buttons KEEP IN BAG / PUT BACK / CLOSE (no E or Q)
 //   puzzles:       a SMALL keypad in the bottom-right corner, only the keys that
 //                  puzzle needs (digits, letters or arrows), so the game stays visible
@@ -54,13 +54,12 @@ body.touch #gameHint { display: none !important; }
 #hh-touch .jump { right: calc(max(4vmin, env(safe-area-inset-right)) + 23vmin); bottom: max(5vmin, env(safe-area-inset-bottom)); width: 14vmin; height: 14vmin; max-width: 80px; max-height: 80px; min-width: 56px; min-height: 56px; }
 #hh-touch .run { right: max(4vmin, env(safe-area-inset-right)); bottom: calc(max(5vmin, env(safe-area-inset-bottom)) + 23vmin); width: 14vmin; height: 14vmin; max-width: 80px; max-height: 80px; min-width: 56px; min-height: 56px; }
 #hh-touch .sit { right: calc(max(4vmin, env(safe-area-inset-right)) + 19vmin); bottom: calc(max(5vmin, env(safe-area-inset-bottom)) + 19vmin); width: 12vmin; height: 12vmin; max-width: 68px; max-height: 68px; min-width: 50px; min-height: 50px; }
-/* top right: one tidy row  PAUSE  BAG  LIGHT  BELL */
+/* top right: one tidy row  PAUSE  BAG  LIGHT */
 #hh-touch .mini { top: max(2vmin, env(safe-area-inset-top)); width: 11.5vmin; height: 11.5vmin; max-width: 60px; max-height: 60px; min-width: 44px; min-height: 44px; font-size: 18px; }
 #hh-touch .pause { right: max(2vmin, env(safe-area-inset-right)); }
 #hh-touch .bag { right: calc(max(2vmin, env(safe-area-inset-right)) + 13.5vmin); }
 #hh-touch .light { right: calc(max(2vmin, env(safe-area-inset-right)) + 27vmin); }
-#hh-touch .bell { right: calc(max(2vmin, env(safe-area-inset-right)) + 40.5vmin); }
-@media (max-height: 380px) { #hh-touch .mini { width: 42px; height: 42px; min-width: 40px; min-height: 40px; } #hh-touch .bag { right: calc(max(2vmin, env(safe-area-inset-right)) + 48px); } #hh-touch .light { right: calc(max(2vmin, env(safe-area-inset-right)) + 94px); } #hh-touch .bell { right: calc(max(2vmin, env(safe-area-inset-right)) + 140px); } }
+@media (max-height: 380px) { #hh-touch .mini { width: 42px; height: 42px; min-width: 40px; min-height: 40px; } #hh-touch .bag { right: calc(max(2vmin, env(safe-area-inset-right)) + 48px); } #hh-touch .light { right: calc(max(2vmin, env(safe-area-inset-right)) + 94px); } }
 /* the small keypad: bottom-right corner, see-through, only the keys that are needed */
 #hh-pad { position: fixed; right: max(6px, env(safe-area-inset-right)); bottom: max(6px, env(safe-area-inset-bottom)); width: min(300px, 46vw); z-index: 810; display: none; padding: 5px; background: rgba(8,8,8,.62); border: 1px solid rgba(165,15,24,.8); border-radius: 10px; touch-action: none; }
 #hh-pad.on { display: block; }
@@ -150,7 +149,7 @@ export function initTouch(api) {
         <div class="btn mini pause">&#10074;&#10074;<small>MENU</small></div>
         <div class="btn mini bag">&#127890;<small>BAG</small></div>
         <div class="btn mini light">&#128294;<small>LIGHT</small></div>
-        <div class="btn mini bell">&#128276;<small>BELL</small></div>`;
+`;
 
     document.body.appendChild(root);
 
@@ -269,7 +268,6 @@ export function initTouch(api) {
 
     tap(".bag", () => press("KeyB", "b"));
 
-    tap(".bell", () => press("KeyH", "h"));
 
     tap(".pause", () => api.pause());
 

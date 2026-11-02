@@ -116,7 +116,7 @@ export class InteractionSystem {
 
         for (const o of this.interactableObjects) {
 
-            if (o.userData.always && o.userData.always()) { this.select(o); return true; }
+            if (o.userData.always && o.userData.always() && this.select(o)) return true;
         }
 
         return false;
@@ -140,6 +140,16 @@ export class InteractionSystem {
                 " - Press E to interact";
         }
 
+        // an object may have nothing to offer right now (empty prompt): act as if not aimed at
+        if (!text) {
+
+            this.currentObject = null;
+
+            this.hide();
+
+            return false;
+        }
+
         // on a phone the buttons are called ACT and SIT
         if (document.body.classList.contains("touch")) {
 
@@ -149,6 +159,8 @@ export class InteractionSystem {
         this.interactionMessage.textContent = text;
 
         this.interactionMessage.style.display = "block";
+
+        return true;
     }
 
     // key = "E" (default) or "C".  An object answers only to its own key:

@@ -1622,6 +1622,39 @@ function desk(R, x, z) {
 
     R.box(m.wood, 0.5, 0.25, 0.6, x + 0.45, 0.45, z);
 
+    // the drawer: a real one that slides out towards the room (-z)
+    {
+        const dr = new THREE.Group();
+
+        const baseZ = z - 0.3;
+
+        dr.position.set(x + 0.45, 0.46, baseZ);
+
+        const dark = new THREE.MeshStandardMaterial({ color: 0x1c130b, roughness: 1 });
+
+        const part = (mat, w, h, d, px, py, pz) => {
+
+            const q = new THREE.Mesh(U.box, mat);
+
+            q.scale.set(w, h, d);
+
+            q.position.set(px, py, pz);
+
+            dr.add(q);
+        };
+
+        part(m.wood, 0.46, 0.2, 0.03, 0, 0.1, -0.015);          // the front
+        part(m.dark || dark, 0.04, 0.025, 0.02, 0, 0.11, -0.04);   // the knob
+        part(dark, 0.44, 0.02, 0.46, 0, 0.01, 0.23);              // the floor of the drawer
+        part(m.wood, 0.02, 0.1, 0.46, -0.21, 0.07, 0.23);
+        part(m.wood, 0.02, 0.1, 0.46, 0.21, 0.07, 0.23);
+        part(m.wood, 0.44, 0.1, 0.02, 0, 0.07, 0.45);
+
+        R.group.add(dr);
+
+        R.drawer = { dr, baseZ, openZ: baseZ - 0.4, x: x + 0.45 };
+    }
+
     // books + candle stub
     R.box(m.paper, 0.25, 0.12, 0.18, x - 0.5, 0.79, z - 0.1);
 
@@ -2107,30 +2140,87 @@ function roomLoot(R, floorNumber, roomNo, deskX, trunkX, W) {
 
     const tag = "f" + floorNumber + "r" + roomNo;
 
-    // a letter on the desk.  Which note lies here changes with every new game:
+    // a letter in the desk DRAWER.  Which note lies here changes with every new game:
     // a puzzle note (gen.js) if this room has one, otherwise a random old letter
     // (85% of the rooms).  The text is looked up when you read it.
     const deskRoll = lr();
 
     const lore = pick(LETTERS);
 
+    const D = R.drawer;
+
+    let dOpen = false;
+
     {
-        const x = deskX + 0.15;
+        const mesh = new THREE.Mesh(U.box, m.paper);
 
-        const z = 10.15;
+        mesh.scale.set(0.22, 0.008, 0.3);
 
-        const mesh = R._m(
-            U.box, m.paper, 0.22, 0.008, 0.3, x, 0.797, z,
-            { ry: (lr() - 0.5) * 1.2, keep: true }
-        );
+        mesh.position.set(0, 0.034, 0.23);
 
-        const slot = { id: "pz_" + tag, kind: "letter", mesh, x, y: 0.85, z, size: 0.5 };
+        mesh.rotation.y = (lr() - 0.5) * 1.2;
+
+        D.dr.add(mesh);
+
+        const x = D.x, y = 0.56, z = D.openZ + 0.25;
+
+        const slot = { id: "pz_" + tag, kind: "letter", mesh, x, y, z, size: 0.34, access: () => dOpen };
 
         Object.defineProperty(slot, "title", { get: () => (pieceAt(tag) || lore).title });
 
         Object.defineProperty(slot, "text", { get: () => (pieceAt(tag) || lore).text });
 
         const pk = addReadable(R.interaction, R.group, slot);
+
+        // ---- the drawer itself: E opens it, E again closes it
+        const trig = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+
+        trig.scale.set(0.5, 0.3, 0.16);
+
+        trig.visible = false;
+
+        trig.position.set(D.x, 0.56, D.baseZ - 0.08);
+
+        R.group.add(trig);
+
+        let anim = 0;
+
+        const slide = (to) => {
+
+            const from = D.dr.position.z, t0 = performance.now(), id = ++anim;
+
+            const step = () => {
+
+                if (id !== anim) return;
+
+                const k = Math.min(1, (performance.now() - t0) / 520);
+
+                D.dr.position.z = from + (to - from) * (k * k * (3 - 2 * k));
+
+                if (k < 1) requestAnimationFrame(step);
+            };
+
+            step();
+        };
+
+        const place = () => trig.position.set(D.x, 0.56, (dOpen ? D.openZ : D.baseZ) - 0.08);
+
+        trig.userData.getPrompt = () => (dOpen ? "Press E - Close the drawer" : "Press E - Open the drawer");
+
+        trig.userData.interact = () => {
+
+            dOpen = !dOpen;
+
+            slide(dOpen ? D.openZ : D.baseZ);
+
+            place();
+
+            audio.play(dOpen ? "creak_2" : "thud", { vol: dOpen ? 0.7 : 0.45, send: 0.25 });
+
+            if (dOpen && !inventory.has(slot.id) && pk.mesh !== false) { /* the paper is lying there */ }
+        };
+
+        R.interaction.add(trig);
 
         locks.register(() => {
 
@@ -2144,6 +2234,9 @@ function roomLoot(R, floorNumber, roomNo, deskX, trunkX, W) {
             if (!here || used || inventory.has(slot.id)) pk.hide();
             else pk.show();
         });
+
+        // a new game: close the drawer
+        inventory.resetHooks.push(() => { dOpen = false; anim++; D.dr.position.z = D.baseZ; place(); });
     }
 
 
@@ -2204,7 +2297,7 @@ function roomLoot(R, floorNumber, roomNo, deskX, trunkX, W) {
         addContainer(R.interaction, R.group, {
             id: tag + "_trunk", label: "trunk",
             x: trunkX, y: 0.28, z: 8.0, sx: 0.74, sy: 0.62, sz: 1.09,
-            item: pick(TRINKETS)
+            item: pick(TRINKETS), lid: R.trunkLid
         });
     }
 
@@ -2300,7 +2393,80 @@ function buildRoom(ctx, rowN, col, roomNo) {
     const trunkX = freeSide < 0 ? R.lx0 + 0.35 : R.lx1 - 0.35;
 
     // a painted hostel trunk with hero-fan / movie-fan posters (boxes.js)
-    R._m(U.box, trunkMaterials(roomNo, ctx.floorNumber), 0.6, 0.45, 0.95, trunkX, 0.225, 8.0, { keep: true });
+    const tMats = trunkMaterials(roomNo, ctx.floorNumber);
+
+    R._m(U.box, tMats, 0.6, 0.45, 0.95, trunkX, 0.225, 8.0, { keep: true });
+
+    // a REAL lid on a hinge (the side towards the wall): it opens when you press E
+    {
+        const dir = freeSide < 0 ? 1 : -1;            // the lid reaches from the hinge towards +x (dir 1) or -x
+
+        const pivot = new THREE.Group();
+
+        pivot.position.set(trunkX - 0.3 * dir, 0.45, 8.0);
+
+        const lid = new THREE.Mesh(U.box, tMats);
+
+        lid.scale.set(0.6, 0.06, 0.95);
+
+        lid.position.set(0.3 * dir, 0.03, 0);
+
+        pivot.add(lid);
+
+        R.group.add(pivot);
+
+        // the dark inside of the trunk (hidden under the closed lid)
+        const inside = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.87), new THREE.MeshStandardMaterial({ color: 0x120c07, roughness: 1 }));
+
+        inside.rotation.x = -Math.PI / 2;
+
+        inside.position.set(trunkX, 0.455, 8.0);
+
+        R.group.add(inside);
+
+        // what lies in it (shown only while it is open): a small thing, and the cellar key
+        const brass = new THREE.MeshStandardMaterial({ color: 0xb08a3a, roughness: 0.4, metalness: 0.7 });
+
+        const thing = new THREE.Mesh(U.box, brass);
+
+        thing.scale.set(0.14, 0.06, 0.1);
+
+        thing.position.set(trunkX, 0.49, 8.0 + 0.18);
+
+        thing.rotation.y = 0.5;
+
+        thing.visible = false;
+
+        R.group.add(thing);
+
+        const keyThing = new THREE.Group();
+
+        const shaft = new THREE.Mesh(U.box, brass);
+
+        shaft.scale.set(0.2, 0.02, 0.025);
+
+        shaft.position.x = 0.1;
+
+        keyThing.add(shaft);
+
+        const bow = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 6, 12), brass);
+
+        bow.rotation.x = Math.PI / 2;
+
+        bow.position.x = -0.02;
+
+        keyThing.add(bow);
+
+        keyThing.position.set(trunkX - 0.1, 0.48, 8.0 - 0.15);
+
+        keyThing.rotation.y = 0.7;
+
+        keyThing.visible = false;
+
+        R.group.add(keyThing);
+
+        R.trunkLid = { pivot, axis: "z", open: dir * 1.75, thing, keyThing };
+    }
 
     R.collider(0.62, 0.5, 0.97, trunkX, 0, 8.0);
 

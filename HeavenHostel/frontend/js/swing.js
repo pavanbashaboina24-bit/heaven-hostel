@@ -22,6 +22,9 @@ export const ROPE = 2.35;
 // hands + arms on the ropes: OFF (set to true to bring them back)
 const SHOW_HANDS = false;
 
+// the shirt / body you would see looking down: OFF (only the legs are shown)
+const SHOW_BODY = false;
+
 const SEAT_Y = -ROPE;                 // centre of the seat plank
 const SEAT_TOP = SEAT_Y + 0.025;
 
@@ -95,11 +98,14 @@ export function buildBoy() {
     });
 
     // ---------- torso (so looking down you see your shirt) ----------
+    // (switched OFF: while swinging you only see your LEGS, no body, no arms, no hands)
     const torso = new THREE.Mesh(
         new THREE.BoxGeometry(0.34, 0.50, 0.19), shirt
     );
 
     torso.position.set(0, SEAT_TOP + 0.27, -0.16);
+
+    torso.visible = SHOW_BODY;
 
     boy.add(torso);
 

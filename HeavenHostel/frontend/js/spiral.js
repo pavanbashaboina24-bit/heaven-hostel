@@ -595,6 +595,180 @@ export function buildSpiral(scene, cs, interaction) {
 
     inventory.resetHooks.push(() => { for (const b of beats) b.done = false; dark = 0; });
 
+    // ---------------------------------------------------- the DOOR at the top of the stairs
+    // The bridge used to end at a hole in the terrace wall: nothing there.  Now it ends at a
+    // real doorway with an old wooden door.  E opens it (it stays open once opened).
+    const DX = -15, DY = S.top, DZ0 = BRIDGE.z0, DZ1 = BRIDGE.z1;
+
+    const doorWood = new THREE.MeshStandardMaterial({ color: 0x3b2a1c, roughness: 0.95 });
+
+    const frameWood = new THREE.MeshStandardMaterial({ color: 0x241a12, roughness: 1 });
+
+    const sceneBox = (mat, w, h, d, x, y, z) => {
+
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+
+        m.position.set(x, y, z);
+
+        scene.add(m);
+
+        return m;
+    };
+
+    // frame: two posts and a lintel that fills the wall above the door
+    sceneBox(frameWood, 0.62, 2.75, 0.17, DX, DY + 1.375, DZ0 + 0.085);
+
+    sceneBox(frameWood, 0.62, 2.75, 0.17, DX, DY + 1.375, DZ1 - 0.085);
+
+    sceneBox(frameWood, 0.62, 4 - 2.75, DZ1 - DZ0, DX, DY + 2.75 + (4 - 2.75) / 2, (DZ0 + DZ1) / 2);
+
+    sceneBox(iron, 0.64, 0.08, DZ1 - DZ0, DX, DY + 2.75, (DZ0 + DZ1) / 2);
+
+    // a stone threshold and a little lamp that does not quite work
+    sceneBox(frameWood, 0.7, 0.05, DZ1 - DZ0 - 0.3, DX, DY + 0.025, (DZ0 + DZ1) / 2);
+
+    const lampBulb = sceneBox(new THREE.MeshBasicMaterial({ color: 0xffb060 }), 0.12, 0.16, 0.12, DX + 0.45, DY + 2.55, (DZ0 + DZ1) / 2);
+
+    const lampLight = new THREE.PointLight(0xff9a50, 0, 7, 2);
+
+    lampLight.position.set(DX + 0.6, DY + 2.4, (DZ0 + DZ1) / 2);
+
+    scene.add(lampLight);
+
+    // the leaf, hinged on the south post, swings out onto the terrace
+    const dw = DZ1 - DZ0 - 0.34;
+
+    const pivotZ = DZ0 + 0.17;
+
+    const leafPivot = new THREE.Group();
+
+    leafPivot.position.set(DX, DY, pivotZ);
+
+    scene.add(leafPivot);
+
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.07, 2.7, dw), doorWood);
+
+    leaf.position.set(0, 1.35, dw / 2);
+
+    leafPivot.add(leaf);
+
+    for (const y of [0.5, 1.35, 2.2]) {
+
+        const band = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, dw), iron);
+
+        band.position.set(0, y, dw / 2);
+
+        leafPivot.add(band);
+    }
+
+    for (let k = 1; k < 5; k++) {
+
+        const plank = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.7, 0.012), frameWood);
+
+        plank.position.set(0, 1.35, (dw / 5) * k);
+
+        leafPivot.add(plank);
+    }
+
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.014, 6, 14), iron);
+
+    ring.position.set(0.07, 1.25, dw - 0.2);
+
+    ring.rotation.y = Math.PI / 2;
+
+    leafPivot.add(ring);
+
+    for (const sx of [-1, 1]) {
+
+        const hp = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), handMat);
+
+        hp.position.set(sx * 0.045, 1.5, dw * 0.55);
+
+        hp.rotation.y = sx * Math.PI / 2;
+
+        leafPivot.add(hp);
+    }
+
+    // scratch marks from the INSIDE of the door ("let me out")
+    const scratchTex = canvasTexture(128, 256, (g, w, h) => {
+
+        g.clearRect(0, 0, w, h);
+
+        g.strokeStyle = "rgba(200,190,170,0.5)"; g.lineWidth = 2;
+
+        for (let k = 0; k < 14; k++) { const x = 18 + (k % 5) * 20 + Math.random() * 8; g.beginPath(); g.moveTo(x, 30 + Math.random() * 40); g.lineTo(x + Math.random() * 10 - 5, 150 + Math.random() * 90); g.stroke(); }
+    });
+
+    const scratches = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.8), new THREE.MeshBasicMaterial({ map: scratchTex, transparent: true, depthWrite: false }));
+
+    scratches.position.set(0.041, 1.3, dw * 0.5);
+
+    scratches.rotation.y = Math.PI / 2;
+
+    leafPivot.add(scratches);
+
+    // what stops you while the door is shut
+    const doorBlocks = [];
+
+    for (let i = 0; i <= 6; i++) doorBlocks.push(wallBox(DX, DY, pivotZ + (dw * i) / 6, 0.34, 2.7, 0.34));
+
+    let doorBlocking = true;
+
+    const setDoorBlock = (on) => {
+
+        if (on && !doorBlocking) { for (const b of doorBlocks) cs.objects.push(b); doorBlocking = true; }
+
+        if (!on && doorBlocking) {
+
+            for (const b of doorBlocks) { const i = cs.objects.indexOf(b); if (i >= 0) cs.objects.splice(i, 1); }
+
+            doorBlocking = false;
+        }
+    };
+
+    const DOOR_OPEN = 1.75;
+
+    const dTrig = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+
+    dTrig.scale.set(2.2, 2.6, 3.4);
+
+    dTrig.position.set(DX, DY + 1.3, (DZ0 + DZ1) / 2);
+
+    dTrig.visible = false;
+
+    scene.add(dTrig);
+
+    dTrig.userData.getPrompt = () => (inventory.flag("terrace_door_open") ? "" : "Press E - Open the door to the terrace");
+
+    dTrig.userData.interact = () => {
+
+        if (inventory.flag("terrace_door_open")) return;
+
+        inventory.setFlag("terrace_door_open");
+
+        audio.play("creak_3", { vol: 1.0, send: 0.4 });
+
+        inventory.say("The old door groans open.", 2.5);
+
+        setDoorBlock(false);
+
+        tween(leafPivot, "rotation.y", DOOR_OPEN, 900);
+    };
+
+    interaction.add(dTrig);
+
+    // the lamp above the door flickers while you are near it
+    frameHooks.push((t) => {
+
+        const p = getPlayer();
+
+        const near = p && Math.hypot(p.pos.x - DX, p.pos.z - (DZ0 + DZ1) / 2) < 9 && p.pos.y > 9;
+
+        lampLight.intensity = near ? Math.max(0, 2.4 + Math.sin(t * 13) * Math.sin(t * 4.1) * 2 - (Math.random() < 0.03 ? 3 : 0)) : 0;
+
+        lampBulb.visible = near ? lampLight.intensity > 0.5 : true;
+    });
+
     // ---------------------------------------------------- new game: lock it again
     const sync = () => {
 
@@ -603,6 +777,12 @@ export function buildSpiral(scene, cs, interaction) {
         gate.rotation.y = open ? openYaw : closedYaw;
 
         setBlock(!open);
+
+        const dOpen = inventory.flag("terrace_door_open");
+
+        leafPivot.rotation.y = dOpen ? DOOR_OPEN : 0;
+
+        setDoorBlock(!dOpen);
     };
 
     inventory.resetHooks.push(sync);
