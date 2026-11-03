@@ -3,7 +3,7 @@
 //
 //   (the notes in the rooms are in gen.js - they change every game)
 //   CLUES    the 10 pages you earn by solving a puzzle
-//   STORY    what is shown when chapter 1 ends
+//   STORY / STORY3 / STORY4   what is shown when chapter 1 / 2 / 3 ends
 //   LETTER   Ramu's letter (the ending)
 //
 // Edit the texts here; nothing else needs to change.
@@ -79,8 +79,42 @@ export const STORY = [
 
     { img: "story_ghost_walk.jpg", title: "THE CRYING", text: "After that, the crying began.\n\nA week later, boys started to go missing. One saw a thin figure in the corridor. Within a month the hostel was empty.\n\nHe is not here to hurt anyone.\nHe is here because something he promised his mother was never finished." },
 
-    { img: "story_chapter2.jpg", title: "CHAPTER 2", text: "You have learned who he was.\n\nNow find out what he wants.\n\n(Chapter 2 - The Last Wish)" }
+    { img: "story_chapter2.jpg", title: "CHAPTER 2", text: "You have learned who he was.\n\nNow find out what the hostel still remembers.\n\n(Chapter 2 - The Hostel Remembers)",
+      fx: ["flicker", "eyes", "fog"] }
 
+];
+
+// ------------------------------------------------------
+// CHAPTER 2 ENDS: THE LAUGHTER
+// ------------------------------------------------------
+export const STORY3 = [
+    { img: "story_laugh.jpg", title: "THE HOSTEL REMEMBERS", fx: ["flicker", "fog", "dust"],
+      card: { kind: "news", head: "Hostel warden: 'Just boys being boys'", sub: "Parents ask why a complaint was never filed.", red: "Two requests to change hostels. Both refused.", side: "r" },
+      text: "The radio still plays what the walls remember.\n\nEvery night, at the same hour, the laughter."},
+
+    { img: "story_door.jpg", fx: ["flash", "blood", "fog"],
+      text: "They locked him out of the only warm place he had.\n\nThey took his keys. They took his books. They took his name, and gave him a worse one." },
+
+    { img: "story_night.jpg", fx: ["eyes", "flicker", "dust"],
+      text: "He never shouted. He never fought back.\n\nHe sat on the terrace at night, because it was the only place with signal, and said to his mother:\n\n'Amma, I am fine.'" },
+
+    { img: "story_chapter2.jpg", title: "CHAPTER 3", fx: ["flicker", "eyes", "flash"],
+      text: "You know who laughed.\nYou know who did not stop them.\n\nNow learn what he promised.\n\n(Chapter 3 - His Promise)" }
+];
+
+// ------------------------------------------------------
+// CHAPTER 3 ENDS: THE PROMISE
+// ------------------------------------------------------
+export const STORY4 = [
+    { img: "story_village.jpg", title: "HIS PROMISE", fx: ["dust", "zoom", "fog"],
+      card: { kind: "polaroid", img: "story_boy.jpg", caption: "Ramu, with his mother", side: "l" },
+      text: "Behind the walls: a tin box. A rat who only wanted to eat. A lever that never moved.\n\nAnd a single glass bangle." },
+
+    { img: "story_room.jpg", fx: ["flicker", "dust", "shake"],
+      text: "His mother had sold her bangles for his fees.\n\nHe saved his tea money for months. One bangle. Then twenty-nine more to go.\n\nHe never finished." },
+
+    { img: "story_wish.jpg", title: "THE FINAL CHAPTER", fx: ["flicker", "eyes", "flash", "dust"],
+      text: "Only one thing is left.\n\nSeven candles, for the seven boys who laughed.\nLight them in the order the diary says.\n\n(The Final Chapter - His Last Wish)" }
 ];
 
 export const LETTER = {

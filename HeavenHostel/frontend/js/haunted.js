@@ -1218,6 +1218,9 @@ class RB {
 
         m.visible = false;
 
+        // furniture: the ghost walks through it (walls still stop him)
+        m.userData.furniture = true;
+
         this.cs.add(m);
 
         return m;
@@ -1709,15 +1712,21 @@ function doll(R, x, y, z, yaw) {
     add(U.box, m.dark, 0.07, 0.012, 0.01, 0, 0.34, 0.088);
 }
 
+// PHONE ONLY: coloured bulbs (the walls are grey, so the colour comes from the light):
+// amber, sickly green, blood pink, cold blue, ghost violet
+const BULB_PAL = [0xffb067, 0xffb067, 0x86e0a0, 0xff6f80, 0x8aa4ff, 0xc98aff];
+
 function bulb(R, x, z, dead, zoneKey, o) {
 
     o = o || {};
+
+    const tint = PHONE && !o.light ? BULB_PAL[Math.floor(rnd() * BULB_PAL.length)] : null;
 
     const y = o.y || 3.52;
 
     const top = o.top || 4.0;
 
-    const col = o.color || 0xffd9a0;
+    const col = o.color || (tint ? new THREE.Color(tint).lerp(new THREE.Color(0xffffff), 0.45).getHex() : 0xffd9a0);
 
     const wire = R.cyl(
         M().dark, 0.012, top - y, x, y, z
@@ -1735,7 +1744,7 @@ function bulb(R, x, z, dead, zoneKey, o) {
         base: new THREE.Color(dead ? 0x1a1a1a : col),
         zone: zoneKey,
         lvl: 1,
-        lightColor: o.light || 0xffc27a
+        lightColor: o.light || tint || 0xffc27a
     };
 
     R._bulbs = R._bulbs || [];
@@ -2835,11 +2844,11 @@ export function setupHauntedAtmosphere(scene) {
 
     scene.background = new THREE.Color(0x020308);
 
-    scene.fog = new THREE.FogExp2(0x04060a, SETTINGS.fogDensity);
+    scene.fog = new THREE.FogExp2(PHONE ? 0x140a26 : 0x04060a, SETTINGS.fogDensity);
 
-    ambientLight = new THREE.AmbientLight(0x6a7896, SETTINGS.ambient);
+    ambientLight = new THREE.AmbientLight(PHONE ? 0x9a8ed0 : 0x6a7896, SETTINGS.ambient);
 
-    hemiLight = new THREE.HemisphereLight(0x39465e, 0x0c0a08, PHONE ? 0.8 : 0.35);
+    hemiLight = new THREE.HemisphereLight(PHONE ? 0x6a7ae0 : 0x39465e, PHONE ? 0x4a1f38 : 0x0c0a08, PHONE ? 0.8 : 0.35);
 
     scene.add(ambientLight);
 
@@ -3503,6 +3512,8 @@ export function cabinet(R, x, z, ry, o) {
     col.visible = false;
 
     g.add(col);
+
+    col.userData.furniture = true;
 
     R.cs.add(col);
 

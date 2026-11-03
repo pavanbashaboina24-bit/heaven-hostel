@@ -1,6 +1,7 @@
 import { audio } from "./audio.js";
 
 import { events } from "./events.js";
+import { story } from "./story.js";
 
 
 // ======================================================
@@ -355,75 +356,21 @@ export const menu = {
 
     startStory() {
 
+        // black screen behind, then the picture pages (story.js)
         this.show("story");
 
-        const box = $("story-text");
-
-        box.innerHTML = "";
+        $("story-text").innerHTML = "";
 
         $("story-go").style.display = "none";
 
         this.storyAbort = false;
 
-        let pi = 0;
+        story.intro(() => {
 
-        const nextPara = () => {
+            this.stopStory();
 
-            if (this.storyAbort) return;
-
-            if (pi >= STORY.length) {
-
-                $("story-go").style.display = "inline-block";
-
-                return;
-            }
-
-            const item = STORY[pi];
-
-            const p = document.createElement("p");
-
-            if (item.red) p.className = "red";
-
-            box.appendChild(p);
-
-            const caret = document.createElement("span");
-
-            caret.className = "caret";
-
-            let ci = 0;
-
-            if (pi === 2 || pi === 3) audio.whisper();
-
-            if (item.red && pi === STORY.length - 1) audio.stinger();
-
-            const type = () => {
-
-                if (this.storyAbort) return;
-
-                if (ci < item.t.length) {
-
-                    ci++;
-
-                    p.textContent = item.t.slice(0, ci);
-
-                    p.appendChild(caret);
-
-                    this.storyTimer = setTimeout(type, 30 + Math.random() * 30);
-                }
-                else {
-
-                    caret.remove();
-
-                    pi++;
-
-                    this.storyTimer = setTimeout(nextPara, 1500);
-                }
-            };
-
-            type();
-        };
-
-        nextPara();
+            if (this.hooks && this.hooks.onNew) this.hooks.onNew();
+        });
     },
 
     stopStory() {

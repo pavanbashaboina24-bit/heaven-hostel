@@ -136,10 +136,10 @@ function trigger(R, x, y, z, sx, sy, sz, getPrompt, act) {
     return t;
 }
 
-// chapter-2 things wait until the story of chapter 1 has been shown
+// chapter-3 things wait until the story of chapter 2 has been shown
 function tooEarly() {
 
-    if (inventory.flag("story_shown")) return false;
+    if (inventory.flag("story3_shown")) return false;
 
     inventory.say("You do not understand what you are looking at yet. Learn who he was first.", 4);
 

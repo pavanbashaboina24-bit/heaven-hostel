@@ -14,13 +14,17 @@
 import { inventory } from "./inventory.js";
 import { audio } from "./audio.js";
 import { events } from "./events.js";
-import { CLUES, STORY, ENDING, LETTER, REVEAL } from "./clues.js";
+import { CLUES, STORY, STORY3, STORY4, ENDING, LETTER, REVEAL } from "./clues.js";
 import { theCase, hint, whereIs, papersOf } from "./gen.js";
 import { locks } from "./locks.js";
 
-export const L1 = ["drawer", "cipher", "book", "fuse"];
-export const L2 = ["radio", "keys", "rat", "lever", "cellar", "candles"];
-const ORDER = [...L1, ...L2];
+// 3 + 3 + 3 puzzles, then the final one
+export const L1 = ["drawer", "cipher", "book"];                 // chapter 1 - What happened to Ramu?
+export const L2 = ["fuse", "radio", "keys"];                    // chapter 2 - The hostel remembers
+export const L3 = ["rat", "lever", "cellar"];                   // chapter 3 - His promise
+export const FINAL = ["candles"];                               // the final chapter - His last wish
+export const ALL = [...L1, ...L2, ...L3, ...FINAL];
+const ORDER = ALL;
 
 const CSS = `
 #hh-story{position:fixed;top:14px;right:16px;z-index:60;max-width:300px;display:none;
@@ -85,6 +89,28 @@ body.playing #hh-story{display:block}
 #hh-screen .cap .w{opacity:0;filter:blur(5px);display:inline-block;animation:hhWord .6s forwards}
 @keyframes hhWord{to{opacity:1;filter:blur(0)}}
 #hh-screen canvas.dust{position:absolute;inset:0;width:100%;height:100%}
+/* ---- cards on the story pages: newspaper clipping, MISSING poster, polaroid, diary ---- */
+#hh-screen .card{position:absolute;top:9%;z-index:2;pointer-events:none;opacity:0;animation:hhCardIn .9s .5s cubic-bezier(.2,1.4,.4,1) forwards}
+#hh-screen .card.l{left:6%;--r:-4deg}#hh-screen .card.r{right:6%;--r:3.5deg}
+@keyframes hhCardIn{0%{opacity:0;transform:translateY(-120px) rotate(calc(var(--r,0deg) - 12deg)) scale(1.1)}100%{opacity:1;transform:translateY(0) rotate(var(--r,0deg)) scale(1)}}
+#hh-screen .card .tape{position:absolute;width:74px;height:22px;background:rgba(220,205,150,.72);top:-10px;left:calc(50% - 37px);transform:rotate(-3deg);box-shadow:0 1px 3px rgba(0,0,0,.4)}
+#hh-screen .np{width:min(330px,72vw);padding:16px 18px 14px;background:#d7ceb2 repeating-linear-gradient(0deg,rgba(60,45,20,.05) 0 2px,transparent 2px 5px);color:#1d1710;font-family:Georgia,"Times New Roman",serif;box-shadow:0 8px 28px #000,inset 0 0 40px rgba(90,60,20,.5);position:relative}
+#hh-screen .np .mast{font:700 11px Georgia,serif;letter-spacing:.35em;text-align:center;border-bottom:2px solid #1d1710;padding-bottom:5px;margin-bottom:8px}
+#hh-screen .np .hl{font:900 26px/1.05 "Times New Roman",Georgia,serif;text-transform:uppercase;margin-bottom:6px}
+#hh-screen .np .sub{font:italic 13px Georgia,serif;margin-bottom:8px;color:#4a2a1a}
+#hh-screen .np .ln{height:6px;background:rgba(40,30,15,.55);margin:5px 0;border-radius:2px}
+#hh-screen .np .ln.s{width:70%}#hh-screen .np .red{color:#7a0812;font-weight:700}
+#hh-screen .ms{width:min(300px,68vw);padding:14px 14px 12px;text-align:center;background:#cfc3a0;color:#111;font-family:Georgia,serif;box-shadow:0 8px 28px #000,inset 0 0 40px rgba(90,60,20,.5);position:relative}
+#hh-screen .ms .mt{font:900 40px "Times New Roman",Georgia,serif;letter-spacing:.12em;color:#8a0610}
+#hh-screen .ms .ph{width:120px;height:140px;margin:8px auto;background:radial-gradient(circle at 50% 36%,#2a2a2a 0 24%,transparent 25%),radial-gradient(ellipse at 50% 100%,#2a2a2a 0 48%,transparent 49%),#a39a82;border:3px solid #111;position:relative}
+#hh-screen .ms .ph::after{content:"?";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:900 70px Georgia;color:rgba(138,6,16,.8)}
+#hh-screen .ms .mn{font:700 15px Georgia,serif;margin-top:4px}
+#hh-screen .ms .mx{font:italic 12.5px/1.3 Georgia,serif;margin-top:6px}
+#hh-screen .pl{width:min(250px,60vw);padding:12px 12px 46px;background:#e8e1cf;box-shadow:0 8px 28px #000;position:relative}
+#hh-screen .pl .pi{height:min(200px,44vw);background:#222 center/cover no-repeat;filter:sepia(.55) contrast(1.05) brightness(.85)}
+#hh-screen .pl .pc{position:absolute;left:0;right:0;bottom:12px;text-align:center;font:italic 700 19px "Segoe Print","Bradley Hand","Comic Sans MS",cursive;color:#2a2060}
+#hh-screen .skip{position:absolute;top:max(12px,env(safe-area-inset-top));right:14px;z-index:5;padding:6px 12px;border:1px solid rgba(255,255,255,.35);border-radius:6px;color:#ddd;font:13px sans-serif;background:rgba(0,0,0,.45);letter-spacing:.08em}
+@media (max-width:700px){#hh-screen .card{top:5%}#hh-screen .card.l{left:3%}#hh-screen .card.r{right:3%}#hh-screen .np .hl{font-size:20px}#hh-screen .ms .mt{font-size:30px}}
 #hh-screen .bg.zoomin{animation-name:hhZoomIn;animation-duration:9s}
 @keyframes hhZoomIn{from{transform:scale(1.02)}to{transform:scale(1.35) translate(-2%,1%)}}
 `;
@@ -94,6 +120,67 @@ body.playing #hh-story{display:block}
 //   fog  dust  flicker  flash (lightning)  shake  eyes (red eyes in the dark)
 //   blood (drips)  bars (iron bars slam down + chain)  glitch (the title)  zoom
 // ------------------------------------------------------
+// a card laid on top of a story page: { kind: "news"|"poster"|"polaroid", head, sub, caption, img, side }
+function makeCard(c, i) {
+
+    const box = document.createElement("div");
+
+    box.className = "card " + (c.side || (i % 2 ? "r" : "l"));
+
+    const tape = document.createElement("div");
+
+    tape.className = "tape";
+
+    const body = document.createElement("div");
+
+    const el = (cls, txt, parent) => { const d = document.createElement("div"); d.className = cls; if (txt) d.textContent = txt; (parent || body).appendChild(d); return d; };
+
+    if (c.kind === "news") {
+
+        body.className = "np";
+
+        el("mast", c.mast || "THE KOTHAPALLI TIMES");
+
+        el("hl", c.head);
+
+        if (c.sub) el("sub", c.sub);
+
+        for (let k = 0; k < 5; k++) el("ln" + (k % 3 === 2 ? " s" : ""));
+
+        if (c.red) el("red", c.red);
+
+        for (let k = 0; k < 3; k++) el("ln" + (k === 2 ? " s" : ""));
+    }
+    else if (c.kind === "poster") {
+
+        body.className = "ms";
+
+        el("mt", c.head || "MISSING");
+
+        el("ph");
+
+        el("mn", c.sub || "");
+
+        if (c.caption) el("mx", c.caption);
+    }
+    else {
+
+        body.className = "pl";
+
+        const pi = el("pi");
+
+        if (c.img) pi.style.backgroundImage = "url(assets/story/" + c.img + ")";
+
+        el("pc", c.caption || "");
+    }
+
+    box.appendChild(body);
+
+    box.appendChild(tape);
+
+    return box;
+}
+
 const FX_DEFAULT = [["fog", "dust"], ["flicker", "dust"], ["fog", "eyes"], ["flash", "dust", "zoom"], ["blood", "fog"], ["flicker", "eyes", "dust"]];
 
 function addFx(screen, list, token, isActive) {
@@ -245,7 +332,9 @@ class Story {
 
     chapter() {
         if (!this.flag("story_shown")) return 1;
-        return 2;
+        if (!this.flag("story3_shown")) return 2;
+        if (!this.flag("story4_shown")) return 3;
+        return 4;
     }
 
     // ------------------------------------------------ HUD
@@ -276,7 +365,12 @@ class Story {
 
         this.ui();
 
-        const c1 = this.count(L1), c2 = this.count(L2);
+        // saves from before the 3-3-3 chapters: a chapter whose puzzles are all done counts as shown
+        if (this.flag("story_shown") && L2.every((x) => this.solved(x))) inventory.setFlag("story3_shown");
+
+        if (this.flag("story3_shown") && L3.every((x) => this.solved(x))) inventory.setFlag("story4_shown");
+
+        const c1 = this.count(L1), c2 = this.count(L2), c3 = this.count(L3), cf = this.count(FINAL);
 
         let ch = "", ob = "", ht = "";
 
@@ -290,14 +384,20 @@ class Story {
             ch = "Chapter 1"; ob = "What happened to Ramu?  Clues " + c1 + " / " + L1.length;
             ht = (c1 === 0 ? "It all began in Room 204. " : "") + hint(this.next());
         }
-        else if (c2 < L2.length) {
-            ch = "Chapter 2"; ob = "What does Ramu want?  Clues " + c2 + " / " + L2.length; ht = hint(this.next());
+        else if (!this.flag("story3_shown")) {
+            ch = "Chapter 2"; ob = "What does the hostel remember?  Clues " + c2 + " / " + L2.length; ht = hint(this.next());
+        }
+        else if (!this.flag("story4_shown")) {
+            ch = "Chapter 3"; ob = "What did Ramu promise?  Clues " + c3 + " / " + L3.length; ht = hint(this.next());
+        }
+        else if (cf < FINAL.length) {
+            ch = "Final chapter"; ob = "Light the seven candles.  His last wish."; ht = hint(this.next());
         }
         else if (!this.flag("letter_found")) {
-            ch = "Chapter 2"; ob = "Find Ramu's letter."; ht = "Where did he sit alone, watching the gate?  (A hidden door has opened in the mess hall: north wall, opposite the bookcase.)";
+            ch = "Final chapter"; ob = "Find Ramu's letter."; ht = "Where did he sit alone, watching the gate?  (A hidden door has opened in the mess hall: north wall, opposite the bookcase.)";
         }
         else if (!this.flag("room_entered")) {
-            ch = "Chapter 2"; ob = "Take Ramu's letter through the hidden door."; ht = "Mess hall, ground floor: the north wall, opposite the bookcase.";
+            ch = "Final chapter"; ob = "Take Ramu's letter through the hidden door."; ht = "Mess hall, ground floor: the north wall, opposite the bookcase.";
         }
         else if (!inventory.has("ramu_letter") && !this.flag("game_finished")) {
             ch = "The end"; ob = "Bring Ramu's letter."; ht = "It is sewn inside the swing seat in the yard. Cut it open with the rusty blade.";
@@ -385,6 +485,21 @@ class Story {
                 t.textContent = it.title;
 
                 this.screen.appendChild(t);
+            }
+
+            if (it.card) this.screen.appendChild(makeCard(it.card, i));
+
+            if (opts.skip) {
+
+                const sk = document.createElement("div");
+
+                sk.className = "skip";
+
+                sk.textContent = "SKIP \u25B6";
+
+                sk.onclick = (ev) => { ev.stopPropagation(); done(); };
+
+                this.screen.appendChild(sk);
             }
 
             const cap = document.createElement("div");
@@ -478,6 +593,8 @@ class Story {
             if (e.type !== "keydown" || e.repeat) return;
 
             if (e.code === "Enter" || e.code === "Space" || e.code === "KeyE") step();
+
+            if (e.code === "Escape" && opts.skip) done();
         };
 
         this.screen.onclick = step;
@@ -487,15 +604,25 @@ class Story {
         show();
     }
 
+    // the story you can watch before the first game (menu -> Watch story)
     intro(onStart) {
 
         this.pages([
-            { img: "story_title.jpg", title: "HEAVEN HOSTEL", fx: ["fog", "dust", "flicker", "zoom"], text: "A boy named Ramu died here." },
-            { img: "story_arrive.jpg", fx: ["fog", "dust", "zoom"], text: "It was a night just like this one.\n\nThe rain had stopped. The road was empty.\nThe gate of Heaven Hostel stood waiting." },
-            { img: "story_empty.jpg", fx: ["flicker", "dust", "eyes"], text: "Since that night, students have vanished one by one, and the hostel stands empty.\n\nThe villagers will not walk past its wall after dark." },
-            { img: "story_ghost_walk.jpg", fx: ["flash", "fog", "blood"], text: "They say his ghost still walks the halls.\n\nThey say he does not forgive.\nThey say he never sleeps." },
-            { img: "story_hide.jpg", fx: ["flicker", "eyes", "dust"], text: "You came to find out why.\n\nIf you hear him, do not run in the open.\nHide.\nAnd do not let him see your light." }
-        ], { last: "Enter  -  begin", onDone: () => { events.emit("game-begin"); this.refresh(); if (onStart) onStart(); } });
+            { img: "story_title.jpg", title: "HEAVEN HOSTEL", fx: ["fog", "dust", "flicker", "zoom"],
+              text: "A boys' hostel on a hill, at the edge of a quiet town." },
+            { img: "story_village.jpg", fx: ["dust", "zoom"], card: { kind: "polaroid", img: "story_boy.jpg", caption: "Ramu, age 14", side: "l" },
+              text: "A boy named Ramu lived here.\n\nTop of his class. Quiet. Always the first one awake, always the last to sleep." },
+            { img: "story_room.jpg", fx: ["flicker", "dust", "shake"], card: { kind: "news", head: "Boy, 14, found dead in hostel room 204", sub: "Police say the door was locked from the inside.", red: "\"He wrote something before he died.\"", side: "r" },
+              text: "One night, he died in Room 204.\nThey say he took his own life.\n\nIt all started in that room." },
+            { img: "story_empty.jpg", fx: ["fog", "eyes", "flicker"],
+              text: "After that, crying was heard in the empty room.\n\nA week later, students began to go missing." },
+            { img: "story_ghost_walk.jpg", fx: ["flash", "blood", "fog"], card: { kind: "poster", head: "MISSING", sub: "STUDENTS OF HEAVEN HOSTEL", caption: "Last seen in the corridors. If you see a thin boy standing in the dark: do not follow him.", side: "l" },
+              text: "Some of them saw a thin figure in the halls.\n\nWithin a month, the hostel was empty." },
+            { img: "story_gate.jpg", fx: ["fog", "dust", "zoom"],
+              text: "They say Ramu still walks its halls.\n\nNobody knows why." },
+            { img: "story_night.jpg", title: "YOU CAME TO FIND OUT", fx: ["flicker", "eyes", "flash", "dust"],
+              text: "Find his notes. Solve his puzzles.\nLearn the truth, and give him back what he lost." }
+        ], { last: "Enter  -  begin", skip: true, onDone: () => { if (onStart) onStart(); } });
     }
 
     // the main gate has just closed behind you
@@ -550,6 +677,14 @@ class Story {
             this.queue.push("story");
         }
 
+        if (L2.every((x) => this.solved(x)) && !this.flag("story3_shown")) {
+            this.queue.push("story3");
+        }
+
+        if (L3.every((x) => this.solved(x)) && !this.flag("story4_shown")) {
+            this.queue.push("story4");
+        }
+
         if (id === "candles") {
             this.queue.push("wish");
         }
@@ -573,6 +708,18 @@ class Story {
             inventory.setFlag("story_shown");
 
             this.pages(STORY, { last: "Enter  -  chapter 2", onDone: () => this.refresh() });
+        }
+        else if (job === "story3") {
+
+            inventory.setFlag("story3_shown");
+
+            this.pages(STORY3, { last: "Enter  -  chapter 3", onDone: () => this.refresh() });
+        }
+        else if (job === "story4") {
+
+            inventory.setFlag("story4_shown");
+
+            this.pages(STORY4, { last: "Enter  -  the final chapter", onDone: () => this.refresh() });
         }
         else if (job === "wish") {
 

@@ -1,16 +1,16 @@
 // ======================================================
 // THE PUZZLES  -  keyboard-driven screens + the stations in the world
 //
-//   drawer   Warden's drawer     4-digit code            (chapter 1)
-//   cipher   Trunk, Room 204     word lock               (chapter 1)
-//   book     (secrets.js)        pull the right book     (chapter 1)
-//   fuse     Terrace fuse box    6 switches              (chapter 1)
-//   radio    Reception radio     tune the dial           (chapter 2)
-//   keys     Reception key board 3-digit room code       (chapter 2)
-//   rat      (secrets.js)        feed the rat            (chapter 2)
-//   lever    (secrets.js)        fit the lever handle    (chapter 2)
-//   cellar   Tin box, the cellar 4-digit code from the chalk strokes   (chapter 2)
-//   candles  Altar, terrace room 7 candles in order      (chapter 2, last)
+//   CHAPTER 1   drawer   Warden's drawer     4-digit code
+//               cipher   Trunk, Room 204     word lock
+//               book     (secrets.js)        pull the right book
+//   CHAPTER 2   fuse     Terrace fuse box    6 switches
+//               radio    Reception radio     tune the dial
+//               keys     Reception key board 3-digit room code
+//   CHAPTER 3   rat      (secrets.js)        feed the rat
+//               lever    (secrets.js)        fit the lever handle
+//               cellar   Tin box, the cellar 4-digit code from the chalk strokes
+//   FINAL       candles  Altar, terrace room 7 candles in order
 //
 // All screens use the keyboard only (the game keeps the mouse locked):
 //   digits / letters = type    Backspace = delete    Enter = confirm    Q or Esc = leave
@@ -19,7 +19,7 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import { inventory } from "./inventory.js";
 import { audio } from "./audio.js";
-import { story, L2 } from "./story.js";
+import { story, ALL } from "./story.js";
 import { theCase } from "./gen.js";
 
 const CSS = `
@@ -433,7 +433,7 @@ export const PUZZLES = {
     },
 
     fuse: {
-        id: "fuse", type: "switches", level: 1, title: "Terrace fuse box",
+        id: "fuse", type: "switches", level: 2, title: "Terrace fuse box",
         desc: "Six old switches, A to F, and a heavy lever.\nThe two halves of the electrician's card say which switches go UP. All the others stay DOWN.",
         names: ["A", "B", "C", "D", "E", "F"],
         check: (s) => {
@@ -457,14 +457,14 @@ export const PUZZLES = {
     },
 
     cellar: {
-        id: "cellar", type: "code", level: 2, title: "Ramu's tin box",
+        id: "cellar", type: "code", level: 3, title: "Ramu's tin box",
         desc: "A small tin box with four number wheels, hidden in the cellar.\nThe four walls have chalk strokes on them (a slashed bundle = 5). Type the number of strokes: NORTH, EAST, SOUTH, WEST.\n(Ramu's secret note says so. Find it in the hostel.)",
         get answer() { return theCase().cellar.code; },
         wrong: "The wheels click, but the lid stays shut. Count the strokes again, wall by wall."
     },
 
     candles: {
-        id: "candles", type: "sequence", level: 2, title: "The seven candles",
+        id: "candles", type: "sequence", level: 4, title: "The seven candles",
         desc: "Seven candles on the altar, each with a name scratched into the wax.\nPress a candle's number to light it. Light them in the order the boys joined in (1st, 2nd, 3rd ...).\nBackspace takes back the last one.",
         get items() { return theCase().candles.shown; },
         get answer() { return theCase().candles.order; }
@@ -508,7 +508,10 @@ export function addStation(interaction, parent, o) {
 
     parent.add(trig);
 
-    const early = () => def.level === 2 && !inventory.flag("story_shown");
+    // chapter 2 opens after the story of chapter 1, chapter 3 after chapter 2, the finale after chapter 3
+    const early = () => (def.level === 2 && !inventory.flag("story_shown")) ||
+        (def.level === 3 && !inventory.flag("story3_shown")) ||
+        (def.level === 4 && !inventory.flag("story4_shown"));
 
     trig.userData.getPrompt = () => {
 
@@ -535,10 +538,10 @@ export function addStation(interaction, parent, o) {
             return;
         }
 
-        // the last puzzle (the candles) waits for the other four of chapter 2
+        // the last puzzle (the candles) waits for all the others
         if (def.id === "candles") {
 
-            const left = L2.filter((x) => x !== "candles" && !story.solved(x)).length;
+            const left = ALL.filter((x) => x !== "candles" && !story.solved(x)).length;
 
             if (left > 0) {
 

@@ -4,7 +4,7 @@ import * as THREE from
 import { M, U, newBuilder, bulb, canvasTexture, getPlayer } from "./haunted.js";
 import { inventory } from "./inventory.js";
 import { audio } from "./audio.js";
-import { story, L1, L2 } from "./story.js";
+import { story, ALL } from "./story.js";
 import { events } from "./events.js";
 import { tween } from "./secrets.js";
 
@@ -843,7 +843,7 @@ export function addSecretDoor(R) {
         going = false;
 
         // (once it has appeared it stays: Continue must never lock you out of the ending)
-        const all = [...L1, ...L2].every((id) => story.solved(id));
+        const all = ALL.every((id) => story.solved(id));
 
         if (inventory.flag("door_revealed") || all) show(false);
         else {

@@ -355,6 +355,8 @@ function sofa(R, x, z, ry) {
 
     g.add(col);
 
+    col.userData.furniture = true;
+
     R.cs.add(col);
 
     // sit on the sofa (it faces +z in its own turn)
@@ -430,6 +432,8 @@ function tvUnit(R, x, z, ry) {
 
     g.add(col);
 
+    col.userData.furniture = true;
+
     R.cs.add(col);
 }
 
@@ -499,6 +503,8 @@ function bookshelf(R, x, z, ry, rng) {
     col.visible = false;
 
     g.add(col);
+
+    col.userData.furniture = true;
 
     R.cs.add(col);
 

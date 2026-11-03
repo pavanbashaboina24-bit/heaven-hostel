@@ -5,10 +5,10 @@ import { story } from "./story.js";
 // ======================================================
 // TOUCH CONTROLS  -  play Heaven Hostel on a phone or tablet
 //
-//   left thumb   : the round stick (walk; push to the edge to run)
+//   left thumb   : the round stick (walk only: no running)
 //   right thumb  : drag anywhere on the right side to look round
 //   buttons      : ACT (= E: open, pick up, hide, use)   SIT (= C)
-//                  JUMP   RUN (toggle)   LIGHT (= F torch)   BAG   pause
+//                  JUMP   LIGHT (= F torch)   BAG   pause
 //   notes/pickups: real buttons KEEP IN BAG / PUT BACK / CLOSE (no E or Q)
 //   puzzles:       a SMALL keypad in the bottom-right corner, only the keys that
 //                  puzzle needs (digits, letters or arrows), so the game stays visible
@@ -48,11 +48,10 @@ body.touch #gameHint { display: none !important; }
     color: #fff; background: rgba(18,18,18,.5); border: 2px solid rgba(255,255,255,.32); border-radius: 50%; font-size: 12px; font-weight: 700; line-height: 1.05; letter-spacing: .5px; -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
 #hh-touch .btn small { display: block; font-size: 9px; font-weight: 600; opacity: .8; letter-spacing: .5px; margin-top: 1px; }
 #hh-touch .btn:active, #hh-touch .btn.hold { background: rgba(224,27,36,.75); }
-/* bottom right: ACT is the big one, JUMP / RUN / SIT sit around it, nothing overlaps */
+/* bottom right: ACT is the big one, JUMP / SIT sit beside it, nothing overlaps */
 #hh-touch .act { right: max(4vmin, env(safe-area-inset-right)); bottom: max(5vmin, env(safe-area-inset-bottom)); width: 21vmin; height: 21vmin; max-width: 118px; max-height: 118px; min-width: 78px; min-height: 78px; font-size: 16px; background: rgba(165,15,24,.62); border-color: rgba(255,255,255,.55); }
 #hh-touch .act.idle { background: rgba(60,20,22,.45); opacity: .8; }
 #hh-touch .jump { right: calc(max(4vmin, env(safe-area-inset-right)) + 23vmin); bottom: max(5vmin, env(safe-area-inset-bottom)); width: 14vmin; height: 14vmin; max-width: 80px; max-height: 80px; min-width: 56px; min-height: 56px; }
-#hh-touch .run { right: max(4vmin, env(safe-area-inset-right)); bottom: calc(max(5vmin, env(safe-area-inset-bottom)) + 23vmin); width: 14vmin; height: 14vmin; max-width: 80px; max-height: 80px; min-width: 56px; min-height: 56px; }
 #hh-touch .sit { right: calc(max(4vmin, env(safe-area-inset-right)) + 19vmin); bottom: calc(max(5vmin, env(safe-area-inset-bottom)) + 19vmin); width: 12vmin; height: 12vmin; max-width: 68px; max-height: 68px; min-width: 50px; min-height: 50px; }
 /* top right: one tidy row  PAUSE  BAG  LIGHT */
 #hh-touch .mini { top: max(2vmin, env(safe-area-inset-top)); width: 11.5vmin; height: 11.5vmin; max-width: 60px; max-height: 60px; min-width: 44px; min-height: 44px; font-size: 18px; }
@@ -85,12 +84,16 @@ body.touch #hh-puz .dial { height: 44px; margin: 8px 0; }
 body.touch #hh-puz .cd { margin: 3px; padding: 5px 8px; font-size: 11px; min-width: 56px; }
 body.touch #hh-puz .ft { margin-top: 6px; font-size: 9.5px; letter-spacing: .06em; }
 body.touch #hh-puz .msg { font-size: 11.5px; min-height: 14px; }
-/* notes, pickups, bag: smaller paper, bottom space left for the buttons */
-body.touch #hh-reader { align-items: flex-start; padding-top: 8px; background: rgba(0,0,0,.55); }
-body.touch #hh-reader .paper { width: min(520px, 62vw); max-height: calc(100vh - 86px); padding: 14px 18px; }
-body.touch #hh-reader h2 { font-size: 17px; margin-bottom: 8px; }
-body.touch #hh-reader .body { font-size: 14px; line-height: 1.4; }
-body.touch #hh-reader .foot { margin-top: 10px; padding-top: 8px; font-size: 12px; }
+/* notes, pickups, bag: an old paper on the left, the buttons on the right (never on top of each other) */
+body.touch #hh-reader { align-items: center; justify-content: flex-start; padding: 8px 0 8px 3vw; background: radial-gradient(ellipse at 34% 50%, rgba(0,0,0,.3), rgba(0,0,0,.82)); }
+body.touch #hh-reader .paper { width: min(580px, 64vw); max-height: calc(100vh - 20px); padding: 24px 24px 74px; touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+body.touch #hh-reader h2 { font-size: 19px; margin-bottom: 8px; }
+body.touch #hh-reader .body { font-size: 15.5px; line-height: 1.5; }
+body.touch #hh-reader .body .whisper { font-size: 14px; }
+body.touch #hh-reader .foot { margin-top: 12px; padding-top: 8px; font-size: 12px; }
+body.touch #hh-reader .paper .ring { width: 64px; height: 64px; border-width: 5px; }
+body.touch #hh-reader .paper .seal { width: 46px; height: 46px; font-size: 22px; bottom: 14px; }
+body.touch #hh-reader .paper .tape { width: 58px; height: 20px; }
 /* the lines of text on the HUD, made for a small screen */
 body.touch #hh-story { top: 6px; left: 8px; right: auto; text-align: left; max-width: 34vw; font-size: 11px; line-height: 1.35; background: rgba(0,0,0,.35); padding: 4px 8px; border-left: 2px solid #9b3a3a; }
 body.touch #hh-story .ch { font-size: 9px; }
@@ -144,7 +147,6 @@ export function initTouch(api) {
         <div class="stick"><div class="knob"></div></div>
         <div class="btn act idle"><span class="lbl">ACT</span></div>
         <div class="btn jump">JUMP</div>
-        <div class="btn run">RUN</div>
         <div class="btn sit">SIT</div>
         <div class="btn mini pause">&#10074;&#10074;<small>MENU</small></div>
         <div class="btn mini bag">&#127890;<small>BAG</small></div>
@@ -169,7 +171,7 @@ export function initTouch(api) {
     // ------------------------------------------------ the stick
     const stick = q(".stick"), knob = q(".knob");
 
-    let stickId = null, runLatch = false, runAuto = false;
+    let stickId = null;
 
     const setMove = (x, y) => {
 
@@ -183,9 +185,8 @@ export function initTouch(api) {
 
         k.right = x > 0.3;
 
-        runAuto = Math.hypot(x, y) > 0.92;
-
-        k.run = runLatch || runAuto;
+        // (no running on a phone: you walk, always at the same calm speed)
+        k.run = false;
     };
 
     const stickMove = (e) => {
@@ -256,13 +257,12 @@ export function initTouch(api) {
         el.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); fn(el); });
     };
 
-    tap(".act", () => api.interaction.interact("E"));
+    tap(".act", () => { if (api.struggle && api.struggle()) return; api.interaction.interact("E"); });
 
     tap(".sit", () => api.interaction.interact("C"));
 
     tap(".jump", () => { api.player.keys.jump = true; setTimeout(() => { api.player.keys.jump = false; }, 140); });
 
-    tap(".run", (el) => { runLatch = !runLatch; el.classList.toggle("hold", runLatch); api.player.keys.run = runLatch || runAuto; });
 
     tap(".light", () => press("KeyF", "f"));
 

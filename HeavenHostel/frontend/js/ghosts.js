@@ -50,25 +50,26 @@ export const GHOST_CFG = {
     levels: {
 
         easy: {
-            walk: 1.9,            // roaming speed
-            chase: 8.2,           // chase speed (the player walks at 5, runs at 9)
-            vision: 35,           // how far he can see you (he spots you from far away)
+            walk: 1.7,            // roaming speed
+            chase: 6.0,           // chase speed (the player walks at 5, runs at 9)
+            vision: 22,           // how far he can see you
             fov: 360,             // he sees from ANY side: front, back, left, right
-            hear: 1.0,            // multiplies how far your noise carries
-            search: [5, 9],       // seconds he searches after losing you (then he goes away)
-            cooldown: [5, 12],    // seconds between his appearances
+            hear: 0.8,            // multiplies how far your noise carries
+            search: [3, 6],       // seconds he searches after losing you (then he goes away)
+            cooldown: [12, 22],   // seconds between his appearances
             life: [120, 220],     // seconds he stays before vanishing
-            attack: 1.8,          // distance at which he grabs you
-            lose: 1.4,            // seconds without seeing you before searching
-            find: 0.04,           // chance a check finds an UNSEEN hider
-            checkHide: 0.15,      // chance he checks a hiding place at all
-            near: 0.2             // chance a spawn is close / behind you
+            attack: 1.5,          // distance at which he grabs you
+            lose: 0.9,            // seconds without seeing you before searching
+            find: 0.02,           // chance a check finds an UNSEEN hider
+            checkHide: 0.08,      // chance he checks a hiding place at all
+            near: 0.08            // chance a spawn is close / behind you
         },
 
+        // normal = a bit easier than before (v12): slower chase, shorter sight, longer breaks
         normal: {
-            walk: 2.4, chase: 10.0, vision: 45, fov: 360, hear: 1.25,
-            search: [5, 9], cooldown: [3, 8], life: [150, 260],
-            attack: 2.0, lose: 1.2, find: 0.05, checkHide: 0.15, near: 0.28
+            walk: 2.1, chase: 7.4, vision: 30, fov: 360, hear: 1.0,
+            search: [4, 7], cooldown: [8, 16], life: [150, 260],
+            attack: 1.8, lose: 1.1, find: 0.03, checkHide: 0.1, near: 0.15
         },
 
         nightmare: {
@@ -82,6 +83,9 @@ export const GHOST_CFG = {
     spawnMinDist: 13,     // never closer than this (except "near" spawns)
     nearMinDist: 7,       // "near" spawns: behind you, at least this far
     firstSpawnDelay: [12, 22],   // grace at the start of a game
+    huntAfterClues: 3,    // he only HUNTS (chases and kills) once you have solved this many puzzles
+    mercyChance: 0.3,     // sometimes he reaches you and... lets you go (never twice within mercyGap seconds)
+    mercyGap: 75,
     dragSpeed: 1.7,       // how fast he drags you
     statueChance: 0,      // (off) he never stands still waiting
     roomStandChance: 0 // (off)
@@ -107,6 +111,18 @@ const FLOORS = [0, 4, 8, 12];      // 12 = the terrace
 
 // the cellar under Room 106 (cellar.js): Ramu can come down there too
 const CELLAR = { x0: -6.2, x1: -0.8, z0: 7.9, z1: 14.1, y: -4 };
+
+// has the player solved enough puzzles for Ramu to start hunting?
+const ALL_PUZZLES = ["drawer", "cipher", "book", "fuse", "radio", "keys", "rat", "lever", "cellar", "candles"];
+
+function huntOK() {
+
+    let n = 0;
+
+    for (const id of ALL_PUZZLES) if (inventory.flag("pz_" + id)) n++;
+
+    return n >= GHOST_CFG.huntAfterClues;
+}
 
 // the rooms (numbers like 204) that still hold something the player needs:
 // the notes of unsolved puzzles, the cheese, the lever handle, the stairs key
@@ -1328,7 +1344,15 @@ export class GhostSystem {
 
         this.cpos.set(x, this.gy + EYE, z);
 
-        return !this.cs.check(this.cpos, 0.3, EYE);
+        // chairs, beds, trunks, benches ...: a ghost walks through them (walls and doors still stop him)
+        if (!this._ign || this._ignN !== this.cs.objects.length) {
+
+            this._ign = new Set(this.cs.objects.filter((o) => o.userData && o.userData.furniture));
+
+            this._ignN = this.cs.objects.length;
+        }
+
+        return !this.cs.check(this.cpos, 0.3, EYE, this._ign);
     }
 
     // open any closed room door in front of the ghost (silently for the achievements)
@@ -2048,6 +2072,22 @@ export class GhostSystem {
         }
     }
 
+    // he reaches you, stares... and is gone (a scare, not a death)
+    mercy() {
+
+        this.lastMercy = this.clock;
+
+        audio.ghostSfx("growl", this.model.root.position.x, this.eye.y, this.model.root.position.z, 0.9);
+
+        this.flash(0.7);
+
+        inventory.say("He stands over you. Then he turns away, as if he forgot why he came.", 4);
+
+        this.despawn(true);
+
+        this.cool = rnd(20, 30);
+    }
+
     // the number of the dorm room the player is standing in (or null)
     playerRoomNumber() {
 
@@ -2255,6 +2295,9 @@ export class GhostSystem {
 
         if (this.state === "chase") return;
 
+        // before you have solved 3 puzzles he only roams: he never hunts
+        if (!huntOK()) return;
+
         this.state = "chase";
         this.loseT = 0;
         this.chaseRepath = 0;
@@ -2359,6 +2402,17 @@ export class GhostSystem {
 
         if (this.kill || this.dead) return;
 
+        // before 3 puzzles: no killing at all
+        if (!huntOK() && !this.summoned) { this.mercy(); return; }
+
+        // now and then he reaches you, stops... and lets you go
+        if (!this.summoned && this.clock - (this.lastMercy === undefined ? -999 : this.lastMercy) > GHOST_CFG.mercyGap && Math.random() < GHOST_CFG.mercyChance) {
+
+            this.mercy();
+
+            return;
+        }
+
         // called by the bell: he screams as he reaches you
         if (this.summoned) audio.play("scream", { vol: 1.0, send: 0.3, ui: true });
 
@@ -2385,6 +2439,7 @@ export class GhostSystem {
         dz /= dl;
 
         this.kill = {
+            struggle: 0,
             t: 0,
             phase: 1,
             camStart: cam.position.clone(),
@@ -2433,6 +2488,64 @@ export class GhostSystem {
         events.emit("ghost-kill", {});
 
         this.model.setVisible(true);
+
+        // you are not helpless: you can fight, or open your bag
+        const kk = this.kill;
+
+        setTimeout(() => {
+
+            if (this.kill === kk && !this.dead) inventory.say(document.body.classList.contains("touch") ? "STRUGGLE!  Tap ACT again and again!" : "STRUGGLE!  Press E again and again!  (B = bag)", 5);
+
+        }, 1500);
+    }
+
+    // ---- STRUGGLE: while he grabs and drags you, press E (tap ACT) fast to tear yourself free
+    struggleHit() {
+
+        const k = this.kill;
+
+        if (!k || this.dead || k.phase < 2 || k.phase > 3) return false;
+
+        if (!k.struggleHint) { k.struggleHint = true; }
+
+        k.struggle += 1;
+
+        k.shake = Math.min(1.6, k.shake + 0.12);
+
+        audio.play("thud", { vol: 0.35, send: 0.2, ui: true });
+
+        if (k.struggle >= 9) this.freeFromKill();
+
+        return true;
+    }
+
+    freeFromKill() {
+
+        this.kill = null;
+
+        this.speed = 0;
+
+        this.camera.fov = 75;
+
+        this.camera.updateProjectionMatrix();
+
+        this.camera.rotation.z = 0;
+
+        this.lastMercy = this.clock;
+
+        audio.ghostSfx("growl", this.model.root.position.x, this.eye.y, this.model.root.position.z, 1.0);
+
+        this.flash(0.8);
+
+        ghostFx.power = 0;
+
+        inventory.say("You tear yourself free! He staggers back into the dark...", 4);
+
+        this.despawn(true);
+
+        this.cool = rnd(25, 35);
+
+        this.state = "away";
     }
 
     planDrag() {

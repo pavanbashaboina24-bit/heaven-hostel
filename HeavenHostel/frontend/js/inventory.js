@@ -88,6 +88,11 @@ background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' 
 #hh-reader .body .whisper{display:block;margin-top:16px;color:#7a0812;font:italic 700 18px "Segoe Print","Bradley Hand",Georgia,cursive;opacity:0;animation:hhWhisper 6s 1.2s forwards}
 #hh-reader .foot{margin-top:20px;padding-top:12px;border-top:1px solid #8a7a58;
 font:15px Arial,sans-serif;color:#4a3826;text-align:center}
+#hh-reader .paper .tape{position:absolute;top:-6px;width:78px;height:24px;background:rgba(222,205,150,.74);box-shadow:0 1px 3px rgba(0,0,0,.4);pointer-events:none;z-index:2}
+#hh-reader .paper .tape.a{left:8%;transform:rotate(-7deg)}#hh-reader .paper .tape.b{right:8%;transform:rotate(6deg)}
+#hh-reader .paper .ring{position:absolute;right:12%;top:30%;width:96px;height:96px;border-radius:50%;pointer-events:none;border:7px solid rgba(92,52,18,.26);box-shadow:inset 0 0 12px rgba(92,52,18,.25);transform:rotate(12deg)}
+#hh-reader .paper .seal{position:absolute;left:16px;bottom:16px;width:54px;height:54px;border-radius:50% 46% 52% 48%;pointer-events:none;background:radial-gradient(circle at 36% 32%,#c4202c,#7a0812 62%,#4a0509);box-shadow:0 2px 6px rgba(0,0,0,.55),inset 0 0 8px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:rgba(255,200,190,.65);font:700 26px Georgia,serif}
+#hh-reader .paper .burn{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 0 100%,rgba(20,8,0,.55),transparent 28%),radial-gradient(ellipse at 100 0,rgba(20,8,0,.4),transparent 24%)}
 @keyframes hhUnfold{from{opacity:0;transform:rotate(var(--rot,0deg)) scale(.55) translateY(40px)}to{opacity:1;transform:rotate(var(--rot,0deg)) scale(1)}}
 @keyframes hhCandle{0%{filter:brightness(1)}13%{filter:brightness(.78)}16%{filter:brightness(1.05)}41%{filter:brightness(.88)}44%{filter:brightness(1)}72%{filter:brightness(.7)}74%{filter:brightness(1)}}
 @keyframes hhDripDown{0%{transform:translateY(-70px)}35%{transform:translateY(0)}100%{transform:translateY(0)}}
@@ -418,6 +423,27 @@ class Inventory {
         }
 
         p.style.setProperty("--rot", ((Math.random() - 0.5) * 2.4).toFixed(2) + "deg");
+
+        // old-paper decoration: tape, a coffee ring, burnt corners and a wax seal
+        for (const cls of ["burn", "tape a", "tape b", "ring"]) {
+
+            const d = document.createElement("div");
+
+            d.className = cls;
+
+            p.appendChild(d);
+        }
+
+        if (Math.random() < 0.6) {
+
+            const sl = document.createElement("div");
+
+            sl.className = "seal";
+
+            sl.textContent = "R";
+
+            p.appendChild(sl);
+        }
 
         const foot = document.createElement("div");
 
