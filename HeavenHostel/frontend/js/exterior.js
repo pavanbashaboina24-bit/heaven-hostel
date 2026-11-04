@@ -1735,107 +1735,125 @@ function buildGate(R, rng) {
 
     // chain and padlock hanging on the left leaf
     {
-        // ---- a REAL chain: thick links wound twice round the bars where the two leaves meet,
-        // with a big padlock.  (It falls off when the gate is smashed, and is wound on again
-        // when the gate locks behind you.)
+        // ---- a small, real chain: thin links wound once round the bars where the two leaves
+        // meet, held by a padlock.  Smash the gate and the LOCK BREAKS: the chain falls and the
+        // broken lock lies on the ground.  It is wound on again when the gate locks behind you.
         const chainG = new THREE.Group();
 
         chainG.position.set(W, 0, 0);
 
         R.group.add(chainG);
 
-        const linkGeo = new THREE.TorusGeometry(0.06, 0.016, 6, 14);
+        const linkGeo = new THREE.TorusGeometry(0.03, 0.007, 5, 10);
 
-        const chainMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4e, roughness: 0.45, metalness: 0.85 });
+        const chainMat = new THREE.MeshStandardMaterial({ color: 0x55565a, roughness: 0.5, metalness: 0.85 });
 
         const rustMat = new THREE.MeshStandardMaterial({ color: 0x6a3a22, roughness: 0.9, metalness: 0.4 });
 
-        const strand = (y, x, z0, z1) => {
+        const strand = (parent, y, x, z0, z1) => {
 
-            const n = Math.round(Math.abs(z1 - z0) / 0.085);
+            const n = Math.round(Math.abs(z1 - z0) / 0.042);
 
             for (let i = 0; i <= n; i++) {
 
-                const link = new THREE.Mesh(linkGeo, i % 3 === 0 ? rustMat : chainMat);
+                const link = new THREE.Mesh(linkGeo, i % 4 === 0 ? rustMat : chainMat);
 
-                link.position.set(x, y + Math.sin(i * 1.7) * 0.01, z0 + (z1 - z0) * (i / n));
+                link.position.set(x, y, z0 + (z1 - z0) * (i / n));
 
-                link.scale.set(1, 0.72, 1);
+                link.scale.set(1, 0.7, 1);
 
-                // alternate links stand at right angles, like a real chain
                 link.rotation.set(i % 2 ? Math.PI / 2 : 0, Math.PI / 2, 0);
 
-                chainG.add(link);
+                parent.add(link);
             }
         };
 
-        // two turns round the bars (one in front, one behind) at two heights
-        strand(1.42, 0.09, -0.92, 0.92);
+        // one turn round the bars: in front and behind
+        strand(chainG, 1.3, 0.075, -0.4, 0.4);
 
-        strand(1.42, -0.09, -0.92, 0.92);
+        strand(chainG, 1.3, -0.075, -0.4, 0.4);
 
-        strand(1.24, 0.09, -0.92, 0.92);
-
-        strand(1.24, -0.09, -0.92, 0.92);
-
-        // the links that join front and back over the bars
-        for (const z of [-0.92, 0.92]) for (const y of [1.42, 1.24]) {
+        for (const z of [-0.4, 0.4]) {
 
             const j = new THREE.Mesh(linkGeo, chainMat);
 
-            j.position.set(0, y, z);
+            j.position.set(0, 1.3, z);
 
             j.rotation.set(0, 0, Math.PI / 2);
 
-            j.scale.set(1.5, 0.72, 1);
+            j.scale.set(2.4, 0.7, 1);
 
             chainG.add(j);
         }
 
-        // the padlock hangs from three links in the middle
+        // a small padlock hangs from the chain
         const lockG = new THREE.Group();
 
-        lockG.position.set(0.12, 1.2, 0);
+        lockG.position.set(0.085, 1.24, 0);
 
         chainG.add(lockG);
 
-        for (let i = 0; i < 3; i++) {
+        const brassMat = new THREE.MeshStandardMaterial({ color: 0x9a7a30, roughness: 0.4, metalness: 0.8 });
 
-            const l = new THREE.Mesh(linkGeo, chainMat);
+        const lockBody = new THREE.Mesh(U.box, brassMat);
 
-            l.position.set(0, 0.18 - i * 0.07, 0);
+        lockBody.scale.set(0.045, 0.07, 0.06);
 
-            l.rotation.set(i % 2 ? Math.PI / 2 : 0, 0, 0);
-
-            lockG.add(l);
-        }
-
-        const lockBody = new THREE.Mesh(U.box, new THREE.MeshStandardMaterial({ color: 0x8a6a2a, roughness: 0.4, metalness: 0.8 }));
-
-        lockBody.scale.set(0.12, 0.17, 0.2);
-
-        lockBody.position.set(0, -0.09, 0);
+        lockBody.position.set(0, -0.04, 0);
 
         lockG.add(lockBody);
 
-        const shackle = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.014, 6, 12, Math.PI), chainMat);
+        const shackle = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.006, 5, 10, Math.PI), chainMat);
 
-        shackle.position.set(0, 0.0, 0);
+        shackle.position.set(0, 0, 0);
 
         lockG.add(shackle);
 
-        const keyhole = new THREE.Mesh(U.box, new THREE.MeshBasicMaterial({ color: 0x050505 }));
+        // ---- after the gate is smashed: the broken lock and a few links on the ground
+        const brokenG = new THREE.Group();
 
-        keyhole.scale.set(0.125, 0.04, 0.02);
+        brokenG.position.set(W + 0.35, 0, 0.3);
 
-        keyhole.position.set(0, -0.1, 0.101);
+        R.group.add(brokenG);
 
-        lockG.add(keyhole);
+        const bLock = new THREE.Mesh(U.box, brassMat);
+
+        bLock.scale.set(0.045, 0.07, 0.06);
+
+        bLock.position.set(0, 0.035, 0);
+
+        bLock.rotation.set(0.2, 0.6, 0.5);
+
+        brokenG.add(bLock);
+
+        // the snapped shackle: only half of it is left, bent open
+        const bShackle = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.006, 5, 10, Math.PI * 0.7), chainMat);
+
+        bShackle.position.set(0.04, 0.02, 0.03);
+
+        bShackle.rotation.set(1.2, 0.4, 0.9);
+
+        brokenG.add(bShackle);
+
+        for (let i = 0; i < 9; i++) {
+
+            const link = new THREE.Mesh(linkGeo, i % 3 === 0 ? rustMat : chainMat);
+
+            link.position.set(0.12 + i * 0.04 + Math.sin(i * 2.1) * 0.015, 0.012, -0.05 - Math.sin(i * 1.3) * 0.07);
+
+            link.scale.set(1, 0.7, 1);
+
+            link.rotation.set(i % 2 ? Math.PI / 2 : Math.PI / 2 + 0.3, i * 0.9, 0);
+
+            brokenG.add(link);
+        }
 
         // (the visibility is set below, once we know whether the gate has locked behind you)
         leaves.chainG = chainG;
 
-        anim.swings.push({ g: lockG, speed: 1.1, phase: 0.4, amp: 0.05 });
+        leaves.brokenG = brokenG;
+
+        anim.swings.push({ g: lockG, speed: 1.1, phase: 0.4, amp: 0.04 });
     }
 
     // both leaves swing inward (toward the hostel, -x):
@@ -1854,6 +1872,8 @@ function buildGate(R, rng) {
 
         // the chain: on while the gate is whole, off once smashed, wound on again when it locks you in
         if (leaves.chainG) leaves.chainG.visible = !inventory.flag("gate_broken") || (lockedIn() && !handles[0].isOpen);
+
+        if (leaves.brokenG) leaves.brokenG.visible = inventory.flag("gate_broken");
 
         if (lockedIn() || !inventory.flag("gate_broken") || !handles[0].isOpen) return;
 

@@ -257,17 +257,7 @@ document.addEventListener("pointerlockerror", () => {
 
 document.addEventListener("keydown", (event) => {
 
-    // while he is dragging you: E / Space = STRUGGLE to break free
-    if (state.mode === "playing" && ghosts.cinematic) {
-
-        const kk = event.key.toLowerCase();
-
-        if (kk === "e" || kk === " ") ghosts.struggleHit();
-
-        return;
-    }
-
-    if (state.mode !== "playing") return;
+    if (state.mode !== "playing" || ghosts.cinematic) return;
     if (event.key.toLowerCase() === "e") {
 
         interactionSystem.interact("E");
@@ -445,7 +435,7 @@ if (IS_TOUCH && !localStorage.getItem("hh_touch_q")) {
     applySettings(settings);
 }
 
-initTouch({ player, interaction: interactionSystem, pause: pauseGame, struggle: () => ghosts.struggleHit() });
+initTouch({ player, interaction: interactionSystem, pause: pauseGame });
 
 // (the old bell that called the ghost is gone: no self-kill)
 

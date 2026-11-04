@@ -62,7 +62,7 @@ body.playing #hh-story{display:block}
 @keyframes hhBlink{50%{opacity:.35}}
 /* ---- the effects of the story pages (fx) ---- */
 #hh-screen .fx{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-#hh-screen .fog{position:absolute;left:-40%;width:180%;height:46%;opacity:.5;filter:blur(18px);
+#hh-screen .fog{position:absolute;left:-40%;width:180%;height:46%;opacity:.5;
   background:radial-gradient(ellipse at 30% 50%,rgba(200,210,230,.30),transparent 60%),radial-gradient(ellipse at 75% 40%,rgba(200,210,230,.22),transparent 55%);animation:hhFog 22s linear infinite alternate}
 #hh-screen .fog.f2{top:48%;animation-duration:30s;animation-direction:alternate-reverse;opacity:.4}
 @keyframes hhFog{from{transform:translateX(-8%)}to{transform:translateX(8%)}}
@@ -86,8 +86,8 @@ body.playing #hh-story{display:block}
 @keyframes hhChain{to{transform:translateX(0)}}
 #hh-screen .ttl.glitch{animation:hhIn 1.6s .2s forwards,hhGlitch 3.7s 1.8s infinite}
 @keyframes hhGlitch{0%,90%,100%{transform:none;text-shadow:0 0 22px rgba(224,27,36,.55),0 2px 4px #000}92%{transform:translate(-6px,1px) skewX(-8deg);text-shadow:4px 0 #0ff,-4px 0 #f0f}94%{transform:translate(5px,-2px);text-shadow:-3px 0 #0ff,3px 0 #f0f}96%{transform:none}}
-#hh-screen .cap .w{opacity:0;filter:blur(5px);display:inline-block;animation:hhWord .6s forwards}
-@keyframes hhWord{to{opacity:1;filter:blur(0)}}
+#hh-screen .cap .w{opacity:0;display:inline-block;animation:hhWord .6s forwards}
+@keyframes hhWord{to{opacity:1}}
 #hh-screen canvas.dust{position:absolute;inset:0;width:100%;height:100%}
 /* ---- cards on the story pages: newspaper clipping, MISSING poster, polaroid, diary ---- */
 #hh-screen .card{position:absolute;top:9%;z-index:2;pointer-events:none;opacity:0;animation:hhCardIn .9s .5s cubic-bezier(.2,1.4,.4,1) forwards}

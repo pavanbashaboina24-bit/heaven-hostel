@@ -5,10 +5,10 @@ import { story } from "./story.js";
 // ======================================================
 // TOUCH CONTROLS  -  play Heaven Hostel on a phone or tablet
 //
-//   left thumb   : the round stick (walk only: no running)
+//   left thumb   : the round stick (walk; the RUN button toggles running)
 //   right thumb  : drag anywhere on the right side to look round
 //   buttons      : ACT (= E: open, pick up, hide, use)   SIT (= C)
-//                  JUMP   LIGHT (= F torch)   BAG   pause
+//                  JUMP   RUN (toggle)   LIGHT (= F torch)   BAG   pause
 //   notes/pickups: real buttons KEEP IN BAG / PUT BACK / CLOSE (no E or Q)
 //   puzzles:       a SMALL keypad in the bottom-right corner, only the keys that
 //                  puzzle needs (digits, letters or arrows), so the game stays visible
@@ -45,7 +45,7 @@ body.touch #gameHint { display: none !important; }
     border-radius: 50%; background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.22); pointer-events: auto; touch-action: none; }
 #hh-touch .knob { position: absolute; left: 50%; top: 50%; width: 42%; height: 42%; margin: -21% 0 0 -21%; border-radius: 50%; background: rgba(224,27,36,.5); border: 2px solid rgba(255,255,255,.45); }
 #hh-touch .btn { position: absolute; pointer-events: auto; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-    color: #fff; background: rgba(18,18,18,.5); border: 2px solid rgba(255,255,255,.32); border-radius: 50%; font-size: 12px; font-weight: 700; line-height: 1.05; letter-spacing: .5px; -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+    color: #fff; background: rgba(18,18,18,.5); border: 2px solid rgba(255,255,255,.32); border-radius: 50%; font-size: 12px; font-weight: 700; line-height: 1.05; letter-spacing: .5px; }
 #hh-touch .btn small { display: block; font-size: 9px; font-weight: 600; opacity: .8; letter-spacing: .5px; margin-top: 1px; }
 #hh-touch .btn:active, #hh-touch .btn.hold { background: rgba(224,27,36,.75); }
 /* bottom right: ACT is the big one, JUMP / SIT sit beside it, nothing overlaps */
@@ -53,6 +53,7 @@ body.touch #gameHint { display: none !important; }
 #hh-touch .act.idle { background: rgba(60,20,22,.45); opacity: .8; }
 #hh-touch .jump { right: calc(max(4vmin, env(safe-area-inset-right)) + 23vmin); bottom: max(5vmin, env(safe-area-inset-bottom)); width: 14vmin; height: 14vmin; max-width: 80px; max-height: 80px; min-width: 56px; min-height: 56px; }
 #hh-touch .sit { right: calc(max(4vmin, env(safe-area-inset-right)) + 19vmin); bottom: calc(max(5vmin, env(safe-area-inset-bottom)) + 19vmin); width: 12vmin; height: 12vmin; max-width: 68px; max-height: 68px; min-width: 50px; min-height: 50px; }
+#hh-touch .run { right: max(4vmin, env(safe-area-inset-right)); bottom: calc(max(5vmin, env(safe-area-inset-bottom)) + 23vmin); width: 14vmin; height: 14vmin; max-width: 80px; max-height: 80px; min-width: 56px; min-height: 56px; }
 /* top right: one tidy row  PAUSE  BAG  LIGHT */
 #hh-touch .mini { top: max(2vmin, env(safe-area-inset-top)); width: 11.5vmin; height: 11.5vmin; max-width: 60px; max-height: 60px; min-width: 44px; min-height: 44px; font-size: 18px; }
 #hh-touch .pause { right: max(2vmin, env(safe-area-inset-right)); }
@@ -147,6 +148,7 @@ export function initTouch(api) {
         <div class="stick"><div class="knob"></div></div>
         <div class="btn act idle"><span class="lbl">ACT</span></div>
         <div class="btn jump">JUMP</div>
+        <div class="btn run">RUN</div>
         <div class="btn sit">SIT</div>
         <div class="btn mini pause">&#10074;&#10074;<small>MENU</small></div>
         <div class="btn mini bag">&#127890;<small>BAG</small></div>
@@ -166,12 +168,12 @@ export function initTouch(api) {
     const q = (s) => root.querySelector(s);
 
     // a phone thumb is not a keyboard: walk and run at a calm, normal pace
-    api.player.speedScale = 0.62;
+    api.player.speedScale = 0.82;
 
     // ------------------------------------------------ the stick
     const stick = q(".stick"), knob = q(".knob");
 
-    let stickId = null;
+    let stickId = null, runLatch = false;
 
     const setMove = (x, y) => {
 
@@ -185,8 +187,8 @@ export function initTouch(api) {
 
         k.right = x > 0.3;
 
-        // (no running on a phone: you walk, always at the same calm speed)
-        k.run = false;
+        // walking is the stick; RUN is its own button (tap = run on, tap again = off)
+        k.run = runLatch;
     };
 
     const stickMove = (e) => {
@@ -257,7 +259,9 @@ export function initTouch(api) {
         el.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); fn(el); });
     };
 
-    tap(".act", () => { if (api.struggle && api.struggle()) return; api.interaction.interact("E"); });
+    tap(".run", (el) => { runLatch = !runLatch; el.classList.toggle("hold", runLatch); api.player.keys.run = runLatch; });
+
+    tap(".act", () => api.interaction.interact("E"));
 
     tap(".sit", () => api.interaction.interact("C"));
 

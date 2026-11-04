@@ -25,6 +25,23 @@ export class InteractionSystem {
 
         this.raycaster = new THREE.Raycaster();
 
+        // a glowing frame round the thing you are aiming at (drawers, lids, papers ...):
+        // objects with userData.outline = true get it, so you can SEE what you can open
+        this.hl = new THREE.LineSegments(
+            new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)),
+            new THREE.LineBasicMaterial({ color: 0xffe08a, transparent: true, depthTest: false, depthWrite: false })
+        );
+
+        this.hl.renderOrder = 999;
+
+        this.hl.visible = false;
+
+        this.hl.frustumCulled = false;
+
+        scene.add(this.hl);
+
+        this.hlTarget = null;
+
         this.center = new THREE.Vector2(0, 0);
 
         this.interactableObjects = [];
@@ -54,10 +71,28 @@ export class InteractionSystem {
 
         this.currentObject = null;
 
+        this.hlTarget = null;
+
+        this.hl.visible = false;
+
         this.interactionMessage.style.display = "none";
     }
 
     update() {
+
+        // keep the frame on its target (it follows a sliding drawer)
+        if (this.hlTarget) {
+
+            const o = this.hlTarget;
+
+            o.updateWorldMatrix(true, false);
+
+            o.matrixWorld.decompose(this.hl.position, this.hl.quaternion, this.hl.scale);
+
+            this.hl.scale.multiplyScalar(1.05);
+
+            this.hl.material.opacity = 0.6 + 0.4 * Math.sin(performance.now() * 0.008);
+        }
 
         this.raycaster.setFromCamera(this.center, this.camera);
 
@@ -159,6 +194,10 @@ export class InteractionSystem {
         this.interactionMessage.textContent = text;
 
         this.interactionMessage.style.display = "block";
+
+        this.hlTarget = object.userData.outline ? object : null;
+
+        this.hl.visible = !!this.hlTarget;
 
         return true;
     }

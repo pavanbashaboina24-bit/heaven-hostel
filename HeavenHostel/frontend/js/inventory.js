@@ -806,6 +806,8 @@ function makeTrigger(parent, x, y, z, sx, sy, sz) {
 
     trig.visible = false;
 
+    trig.userData.outline = true;      // a glowing frame shows when you aim at it
+
     parent.add(trig);
 
     return trig;

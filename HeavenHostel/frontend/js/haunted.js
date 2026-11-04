@@ -53,7 +53,7 @@ export const SETTINGS = {
 
     bulb: PHONE ? 26 : 16,                // strength of the flickering room bulbs
 
-    vignette: true                        // dark screen edges
+    vignette: false                       // (OFF: no dark/blurry screen edges at all)
 };
 
 
@@ -1647,7 +1647,7 @@ function desk(R, x, z) {
         };
 
         part(m.wood, 0.46, 0.2, 0.03, 0, 0.1, -0.015);          // the front
-        part(m.dark || dark, 0.04, 0.025, 0.02, 0, 0.11, -0.04);   // the knob
+        part(new THREE.MeshStandardMaterial({ color: 0xc9a24a, roughness: 0.3, metalness: 0.8 }), 0.09, 0.05, 0.05, 0, 0.1, -0.05);   // a big brass knob you can spot
         part(dark, 0.44, 0.02, 0.46, 0, 0.01, 0.23);              // the floor of the drawer
         part(m.wood, 0.02, 0.1, 0.46, -0.21, 0.07, 0.23);
         part(m.wood, 0.02, 0.1, 0.46, 0.21, 0.07, 0.23);
@@ -2187,6 +2187,8 @@ function roomLoot(R, floorNumber, roomNo, deskX, trunkX, W) {
         trig.scale.set(0.5, 0.3, 0.16);
 
         trig.visible = false;
+
+        trig.userData.outline = true;
 
         trig.position.set(D.x, 0.56, D.baseZ - 0.08);
 

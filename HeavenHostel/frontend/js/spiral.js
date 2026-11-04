@@ -403,15 +403,14 @@ export function buildSpiral(scene, cs, interaction) {
 
         if (inventory.has("spiral_key")) {
 
-            inventory.remove("spiral_key");
-
+            // (the key stays in your bag: the door at the top of the stairs needs it too)
             inventory.setFlag("spiral_open");
 
             audio.keyUnlock();
 
             audio.play("creak_1", { vol: 0.9, send: 0.25, t: 0.3 });
 
-            inventory.say("The key turns. The old padlock falls open and the gate creaks wide.", 3.5);
+            inventory.say("The key turns. The old padlock falls open and the gate creaks wide.\nKeep the key: the door at the top will need it too.", 4);
 
             setBlock(false);
 
@@ -738,21 +737,66 @@ export function buildSpiral(scene, cs, interaction) {
 
     scene.add(dTrig);
 
-    dTrig.userData.getPrompt = () => (inventory.flag("terrace_door_open") ? "" : "Press E - Open the door to the terrace");
+    // The door has a lock too.  You open it FROM THE STAIRS SIDE with the key you found downstairs
+    // (the same key as the gate).  After that it is unlocked for good and opens / closes any time.
+    let doorNow = false;
+
+    const onStairSide = () => { const p = getPlayer(); return !!p && p.pos.x < DX; };
+
+    const swingDoor = (open) => {
+
+        doorNow = open;
+
+        setDoorBlock(!open);
+
+        audio.play(open ? "creak_3" : "thud", { vol: open ? 1.0 : 0.6, send: 0.4 });
+
+        tween(leafPivot, "rotation.y", open ? DOOR_OPEN : 0, open ? 900 : 700);
+    };
+
+    dTrig.userData.getPrompt = () => {
+
+        if (!inventory.flag("terrace_door_unlocked")) return onStairSide() ? "Press E - Unlock the door (the stair key)" : "Press E - Look at the door";
+
+        return doorNow ? "Press E - Close the door" : "Press E - Open the door";
+    };
 
     dTrig.userData.interact = () => {
 
-        if (inventory.flag("terrace_door_open")) return;
+        if (!inventory.flag("terrace_door_unlocked")) {
 
-        inventory.setFlag("terrace_door_open");
+            if (!onStairSide()) {
 
-        audio.play("creak_3", { vol: 1.0, send: 0.4 });
+                audio.doorLocked();
 
-        inventory.say("The old door groans open.", 2.5);
+                inventory.say("Locked. Its lock is on the other side: the stairs side.", 3.5);
 
-        setDoorBlock(false);
+                return;
+            }
 
-        tween(leafPivot, "rotation.y", DOOR_OPEN, 900);
+            if (inventory.has("spiral_key") || inventory.flag("spiral_open")) {
+
+                if (inventory.has("spiral_key")) inventory.remove("spiral_key");
+
+                inventory.setFlag("terrace_door_unlocked");
+
+                audio.keyUnlock();
+
+                inventory.say("The same key turns in the old lock. The door is open for good now.", 3.5);
+
+                swingDoor(true);
+            }
+            else {
+
+                audio.doorLocked();
+
+                inventory.say("Locked. You need the stair key.", 3);
+            }
+
+            return;
+        }
+
+        swingDoor(!doorNow);
     };
 
     interaction.add(dTrig);
@@ -778,11 +822,11 @@ export function buildSpiral(scene, cs, interaction) {
 
         setBlock(!open);
 
-        const dOpen = inventory.flag("terrace_door_open");
+        doorNow = false;
 
-        leafPivot.rotation.y = dOpen ? DOOR_OPEN : 0;
+        leafPivot.rotation.y = 0;
 
-        setDoorBlock(!dOpen);
+        setDoorBlock(true);
     };
 
     inventory.resetHooks.push(sync);
