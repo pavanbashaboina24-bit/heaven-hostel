@@ -919,6 +919,49 @@ function M() {
             color: 0xb8b39c, roughness: 1, side: THREE.DoubleSide
         }),
 
+        // a REAL old note: cream paper, ruled handwriting lines, folds, a coffee ring, burnt corners
+        note: new THREE.MeshStandardMaterial({
+            map: canvasTexture(128, 160, (g, w, h) => {
+
+                g.fillStyle = "#d9cca6"; g.fillRect(0, 0, w, h);
+
+                for (let i = 0; i < 700; i++) { g.fillStyle = "rgba(110,80,40," + (Math.random() * 0.08) + ")"; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+
+                // handwriting: wavy dark-blue lines of different length
+                g.strokeStyle = "rgba(30,36,80,0.55)"; g.lineWidth = 1.4;
+
+                for (let y = 22; y < h - 14; y += 9) {
+
+                    const len = 70 + Math.random() * 30;
+
+                    g.beginPath(); g.moveTo(14, y);
+
+                    for (let x = 14; x < 14 + len; x += 4) g.lineTo(x, y + Math.sin(x * 0.8 + y) * 1.6);
+
+                    g.stroke();
+                }
+
+                // title scribble
+                g.strokeStyle = "rgba(30,36,80,0.8)"; g.lineWidth = 2.2; g.beginPath(); g.moveTo(24, 12); g.bezierCurveTo(44, 4, 66, 18, 100, 9); g.stroke();
+
+                // folds
+                g.strokeStyle = "rgba(70,50,25,0.35)"; g.lineWidth = 1.2;
+                g.beginPath(); g.moveTo(0, h * 0.5); g.lineTo(w, h * 0.5); g.moveTo(w * 0.5, 0); g.lineTo(w * 0.5, h); g.stroke();
+                g.strokeStyle = "rgba(255,245,215,0.35)"; g.beginPath(); g.moveTo(0, h * 0.5 + 1.5); g.lineTo(w, h * 0.5 + 1.5); g.stroke();
+
+                // a coffee ring and a blood-brown drop
+                g.strokeStyle = "rgba(90,52,20,0.38)"; g.lineWidth = 4; g.beginPath(); g.arc(88, 112, 17, 0, 6.28); g.stroke();
+                g.fillStyle = "rgba(110,12,12,0.55)"; g.beginPath(); g.arc(30, 128, 3.2, 0, 7); g.fill(); g.fillRect(29, 128, 2.4, 9);
+
+                // dark, burnt, torn edges
+                const e = g.createLinearGradient(0, 0, w, 0); e.addColorStop(0, "rgba(40,20,5,0.5)"); e.addColorStop(0.08, "rgba(40,20,5,0)"); e.addColorStop(0.92, "rgba(40,20,5,0)"); e.addColorStop(1, "rgba(40,20,5,0.5)");
+                g.fillStyle = e; g.fillRect(0, 0, w, h);
+                const f = g.createLinearGradient(0, 0, 0, h); f.addColorStop(0, "rgba(40,20,5,0.4)"); f.addColorStop(0.07, "rgba(40,20,5,0)"); f.addColorStop(0.93, "rgba(40,20,5,0)"); f.addColorStop(1, "rgba(40,20,5,0.55)");
+                g.fillStyle = f; g.fillRect(0, 0, w, h);
+            }),
+            color: 0xe8e0d0, roughness: 1, side: THREE.DoubleSide
+        }),
+
         plaster: new THREE.MeshStandardMaterial({
             color: 0x6a665c, roughness: 1
         }),
@@ -1716,6 +1759,23 @@ function doll(R, x, y, z, yaw) {
 // amber, sickly green, blood pink, cold blue, ghost violet
 const BULB_PAL = [0xffb067, 0xffb067, 0x86e0a0, 0xff6f80, 0x8aa4ff, 0xc98aff];
 
+// the things lying inside every trunk (materials made once)
+let _clutter = null;
+
+function trunkClutter() {
+
+    if (_clutter) return _clutter;
+
+    const st = (c, r, mt) => new THREE.MeshStandardMaterial({ color: c, roughness: r === undefined ? 0.9 : r, metalness: mt || 0 });
+
+    _clutter = {
+        lining: st(0x6a2a28), blanket: st(0x56667a), shirt: st(0xd8d4c6), bookA: st(0x6a1e1a), bookB: st(0x1e4a2e),
+        brass: st(0x8a6a2a, 0.4, 0.8), glass: st(0x2a6a4a, 0.2, 0.1), rope: st(0x8a7048, 1)
+    };
+
+    return _clutter;
+}
+
 function bulb(R, x, z, dead, zoneKey, o) {
 
     o = o || {};
@@ -2161,7 +2221,7 @@ function roomLoot(R, floorNumber, roomNo, deskX, trunkX, W) {
     let dOpen = false;
 
     {
-        const mesh = new THREE.Mesh(U.box, m.paper);
+        const mesh = new THREE.Mesh(U.box, m.note);
 
         mesh.scale.set(0.22, 0.008, 0.3);
 
@@ -2283,7 +2343,7 @@ function roomLoot(R, floorNumber, roomNo, deskX, trunkX, W) {
         const z = 4.6 + lr() * 2.4;
 
         const mesh = R._m(
-            U.box, m.paper, 0.24, 0.006, 0.32, x, 0.012, z,
+            U.box, m.note, 0.24, 0.006, 0.32, x, 0.012, z,
             { ry: lr() * 6, keep: true }
         );
 
@@ -2406,7 +2466,27 @@ function buildRoom(ctx, rowN, col, roomNo) {
     // a painted hostel trunk with hero-fan / movie-fan posters (boxes.js)
     const tMats = trunkMaterials(roomNo, ctx.floorNumber);
 
-    R._m(U.box, tMats, 0.6, 0.45, 0.95, trunkX, 0.225, 8.0, { keep: true });
+    // a REAL hollow trunk: a floor and four walls (open at the top), a red cloth lining, and things inside
+    {
+        R._m(U.box, tMats, 0.6, 0.04, 0.95, trunkX, 0.02, 8.0, { keep: true });                 // floor
+
+        for (const sx of [-1, 1]) R._m(U.box, tMats, 0.04, 0.45, 0.95, trunkX + sx * 0.28, 0.225, 8.0, { keep: true });   // long walls
+
+        for (const sz of [-1, 1]) R._m(U.box, tMats, 0.52, 0.45, 0.04, trunkX, 0.225, 8.0 + sz * 0.455, { keep: true }); // end walls
+
+        const C = trunkClutter();
+
+        R.box(C.lining, 0.5, 0.012, 0.87, trunkX, 0.04, 8.0);
+
+        R.box(C.blanket, 0.46, 0.1, 0.34, trunkX, 0.052, 8.0 - 0.25, { ry: 0.04 });         // a folded blanket
+        R.box(C.shirt, 0.34, 0.05, 0.28, trunkX + 0.02, 0.152, 8.0 - 0.25, { ry: -0.08 });   // a folded white shirt on it
+        R.box(C.bookA, 0.2, 0.05, 0.28, trunkX - 0.1, 0.052, 8.0 + 0.2, { ry: 0.25 });       // two books
+        R.box(C.bookB, 0.19, 0.045, 0.26, trunkX - 0.09, 0.102, 8.0 + 0.2, { ry: -0.15 });
+        R.cyl(C.brass, 0.09, 0.16, trunkX + 0.14, 0.052, 8.0 + 0.3);                          // an old lantern
+        R.box(C.brass, 0.1, 0.02, 0.1, trunkX + 0.14, 0.212, 8.0 + 0.3);
+        R.cyl(C.glass, 0.05, 0.12, trunkX - 0.16, 0.052, 8.0 + 0.38);                         // a small bottle
+        R.cyl(C.rope, 0.15, 0.05, trunkX + 0.12, 0.052, 8.0 + 0.02);                           // a coil of rope
+    }
 
     // a REAL lid on a hinge (the side towards the wall): it opens when you press E
     {
@@ -2426,15 +2506,6 @@ function buildRoom(ctx, rowN, col, roomNo) {
 
         R.group.add(pivot);
 
-        // the dark inside of the trunk (hidden under the closed lid)
-        const inside = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.87), new THREE.MeshStandardMaterial({ color: 0x120c07, roughness: 1 }));
-
-        inside.rotation.x = -Math.PI / 2;
-
-        inside.position.set(trunkX, 0.455, 8.0);
-
-        R.group.add(inside);
-
         // what lies in it (shown only while it is open): a small thing, and the cellar key
         const brass = new THREE.MeshStandardMaterial({ color: 0xb08a3a, roughness: 0.4, metalness: 0.7 });
 
@@ -2442,7 +2513,7 @@ function buildRoom(ctx, rowN, col, roomNo) {
 
         thing.scale.set(0.14, 0.06, 0.1);
 
-        thing.position.set(trunkX, 0.49, 8.0 + 0.18);
+        thing.position.set(trunkX + 0.03, 0.2, 8.0 - 0.25);
 
         thing.rotation.y = 0.5;
 
@@ -2468,7 +2539,7 @@ function buildRoom(ctx, rowN, col, roomNo) {
 
         keyThing.add(bow);
 
-        keyThing.position.set(trunkX - 0.1, 0.48, 8.0 - 0.15);
+        keyThing.position.set(trunkX - 0.1, 0.17, 8.0 - 0.02);
 
         keyThing.rotation.y = 0.7;
 
@@ -2545,7 +2616,7 @@ function buildRoom(ctx, rowN, col, roomNo) {
         );
 
         R.pln(
-            m.paper, 0.25, 0.32,
+            m.note, 0.25, 0.32,
             R.lx0 + 1.5 + rng() * (W - 3), 0.015, 1 + rng() * 8,
             { rx: -Math.PI / 2, rz: rng() * 6 }
         );
@@ -2808,7 +2879,7 @@ export function decorateCorridor(
     for (let i = 0; i < 12; i++) {
 
         R.pln(
-            m.paper, 0.25, 0.32,
+            m.note, 0.25, 0.32,
             -12 + rng() * 24, 0.015, -2.5 + rng() * 5,
             { rx: -Math.PI / 2, rz: rng() * 6 }
         );

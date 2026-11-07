@@ -653,7 +653,7 @@ export function furnishHall(
         for (let i = 0; i < 4; i++) {
 
             R.pln(
-                M().paper, 0.2, 0.25,
+                M().note, 0.2, 0.25,
                 -8.7 + (rng() - 0.5) * 0.3, 0.74, 3.3 + (rng() - 0.5) * 0.3,
                 { rx: -Math.PI / 2, rz: rng() * 6 }
             );
@@ -750,7 +750,7 @@ export function furnishHall(
     for (let i = 0; i < 8; i++) {
 
         R.pln(
-            m.paper, 0.25, 0.32,
+            m.note, 0.25, 0.32,
             -10 + rng() * 20, 0.015, -3 + rng() * 6,
             { rx: -Math.PI / 2, rz: rng() * 6 }
         );
@@ -832,7 +832,7 @@ export function furnishEntrance(
 
     // register book + bell + dead flowers
     const register = R._m(
-        U.box, m.paper, 0.4, 0.03, 0.3, 13.8, 1.015, -2.9,
+        U.box, m.note, 0.4, 0.03, 0.3, 13.8, 1.015, -2.9,
         { ry: 0.2, keep: true }
     );
 
@@ -844,7 +844,7 @@ export function furnishEntrance(
 
     // the warden's torn page on the desk (puzzle 1)
     const wnote = R._m(
-        U.box, m.paper, 0.2, 0.008, 0.26, 13.62, 1.0, -3.35,
+        U.box, m.note, 0.2, 0.008, 0.26, 13.62, 1.0, -3.35,
         { ry: -0.4, keep: true }
     );
 

@@ -93,6 +93,12 @@ font:15px Arial,sans-serif;color:#4a3826;text-align:center}
 #hh-reader .paper .ring{position:absolute;right:12%;top:30%;width:96px;height:96px;border-radius:50%;pointer-events:none;border:7px solid rgba(92,52,18,.26);box-shadow:inset 0 0 12px rgba(92,52,18,.25);transform:rotate(12deg)}
 #hh-reader .paper .seal{position:absolute;left:16px;bottom:16px;width:54px;height:54px;border-radius:50% 46% 52% 48%;pointer-events:none;background:radial-gradient(circle at 36% 32%,#c4202c,#7a0812 62%,#4a0509);box-shadow:0 2px 6px rgba(0,0,0,.55),inset 0 0 8px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:rgba(255,200,190,.65);font:700 26px Georgia,serif}
 #hh-reader .paper .burn{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 0 100%,rgba(20,8,0,.55),transparent 28%),radial-gradient(ellipse at 100 0,rgba(20,8,0,.4),transparent 24%)}
+#hh-reader.bare{align-items:flex-end;background:linear-gradient(transparent 35%,rgba(0,0,0,.6))}
+#hh-reader.bare .paper{clip-path:none;width:min(560px,92vw);max-height:none;padding:12px 20px;background:rgba(14,10,7,.9);color:#e6dcc0;box-shadow:0 0 0 1px #6a5a3a;transform:none;animation:none;margin-bottom:5vh}
+#hh-reader.bare .paper::before,#hh-reader.bare .paper::after,#hh-reader.bare .paper .tape,#hh-reader.bare .paper .ring,#hh-reader.bare .paper .seal,#hh-reader.bare .paper .burn{display:none}
+#hh-reader.bare h2{color:#e8c875;font-size:20px;animation:none;text-shadow:none;margin-bottom:6px}
+#hh-reader.bare .body{font-size:16px}
+#hh-reader.bare .foot{color:#b8a888;border-color:#5a4a30;margin-top:10px}
 @keyframes hhUnfold{from{opacity:0;transform:rotate(var(--rot,0deg)) scale(.55) translateY(40px)}to{opacity:1;transform:rotate(var(--rot,0deg)) scale(1)}}
 @keyframes hhCandle{0%{filter:brightness(1)}13%{filter:brightness(.78)}16%{filter:brightness(1.05)}41%{filter:brightness(.88)}44%{filter:brightness(1)}72%{filter:brightness(.7)}74%{filter:brightness(1)}}
 @keyframes hhDripDown{0%{transform:translateY(-70px)}35%{transform:translateY(0)}100%{transform:translateY(0)}}
@@ -371,6 +377,9 @@ class Inventory {
 
         p.className = "paper";
 
+        // bare = a 3D thing is shown in your hand (a key ...), only a small caption bar, no paper
+        this.readerBox.classList.toggle("bare", !!opts.bare);
+
         const h = document.createElement("h2");
 
         h.textContent = opts.title;
@@ -529,6 +538,8 @@ class Inventory {
         const p = document.createElement("div");
 
         p.className = "paper";
+
+        this.readerBox.classList.remove("bare");
 
         const h = document.createElement("h2");
 

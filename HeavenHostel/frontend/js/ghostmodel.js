@@ -914,7 +914,12 @@ export class Rope {
 // ------------------------------------------------------
 // THE GHOST
 // ------------------------------------------------------
-export function createGhostModel(scene) {
+// createGhostModel(scene)                 the ghost
+// createGhostModel(scene, { ramu: true })  the SAME 3D model, but as the kind boy Ramu of the ending:
+//   short hair, healthy skin, clean white clothes, a smile, normal eyes - nothing horror
+export function createGhostModel(scene, opts) {
+
+    opts = opts || {};
 
     const M = makeMaterials();
 
@@ -1419,6 +1424,143 @@ export function createGhostModel(scene) {
     const baseHandPos = model.handPos;
     let glb = null;
 
+    // Ramu has no rope and no scary parts
+    if (opts.ramu) {
+        model.setVisible = (v) => { root.visible = v; };
+        rope.setVisible(false);
+        shadow.visible = false;
+    }
+
+    // ---------- the kind Ramu: clean clothes, healthy skin, normal eyes, short hair, a smile ----------
+    function styleRamu(g, bones) {
+
+        const tex = (w, h, draw, flip) => { const t = cv(w, h, draw, true); t.flipY = flip === true; return t; };
+
+        const noise = (gx, w, h, n, a) => { for (let i = 0; i < n; i++) { gx.fillStyle = "rgba(0,0,0," + (Math.random() * a) + ")"; gx.fillRect(Math.random() * w, Math.random() * h, 2, 2); } };
+
+        const skinTex = tex(256, 256, (gx, w, h) => { gx.fillStyle = "#c48c66"; gx.fillRect(0, 0, w, h); noise(gx, w, h, 900, 0.05); });
+
+        const shirtTex = tex(256, 256, (gx, w, h) => {
+
+            gx.fillStyle = "#f6f4ee"; gx.fillRect(0, 0, w, h);
+
+            gx.strokeStyle = "rgba(150,145,130,0.10)"; gx.lineWidth = 1;
+
+            for (let y = 0; y < h; y += 4) { gx.beginPath(); gx.moveTo(0, y); gx.lineTo(w, y); gx.stroke(); }
+
+            noise(gx, w, h, 500, 0.03);
+        });
+
+        const pantsTex = tex(256, 256, (gx, w, h) => { gx.fillStyle = "#ece6d6"; gx.fillRect(0, 0, w, h); noise(gx, w, h, 500, 0.04); });
+
+        // same layout as the old eye picture: a round eye on the top, a band at the bottom
+        const eyeTex = tex(512, 512, (gx, w, h) => {
+
+            gx.fillStyle = "#f1e3da"; gx.fillRect(0, 0, w, h);
+
+            gx.fillStyle = "#f7f4ef"; gx.beginPath(); gx.arc(254, 190, 210, 0, Math.PI * 2); gx.fill();
+
+            gx.fillStyle = "#4a2c18"; gx.beginPath(); gx.arc(254, 190, 74, 0, Math.PI * 2); gx.fill();
+
+            gx.fillStyle = "#7a4a26"; gx.beginPath(); gx.arc(254, 190, 56, 0, Math.PI * 2); gx.fill();
+
+            gx.fillStyle = "#0a0604"; gx.beginPath(); gx.arc(254, 190, 26, 0, Math.PI * 2); gx.fill();
+
+            gx.fillStyle = "rgba(255,255,255,0.95)"; gx.beginPath(); gx.arc(232, 168, 11, 0, Math.PI * 2); gx.fill();
+
+            gx.fillStyle = "#e8d8cc"; gx.fillRect(0, 400, w, 112);
+        });
+
+        const mats = [];
+
+        g.traverse((o) => {
+
+            if (!(o.isMesh || o.isSkinnedMesh)) return;
+
+            const n = o.name;
+
+            if (n === "Hair" || n === "Rags" || n === "NooseRope" || n === "TeethLower" || n === "TeethUpper") { o.visible = false; return; }
+
+            const m = o.material.clone();
+
+            m.transparent = true;
+
+            m.opacity = 0;
+
+            const clean = (map, emissive) => {
+
+                m.map = map; m.color.set(0xffffff); m.normalMap = null; m.aoMap = null; m.emissiveMap = null;
+                m.alphaMap = null; m.roughness = 0.85; m.metalness = 0; m.side = THREE.DoubleSide;
+                m.emissive.set(emissive);
+            };
+
+            if (n === "Head" || n === "Body") clean(skinTex, 0x1c0f08);
+            else if (n === "Shirt") clean(shirtTex, 0x5a5a56);
+            else if (n === "Trousers") clean(pantsTex, 0x4c4a44);
+            else if (n === "EyeL" || n === "EyeR") { clean(eyeTex, 0x1a1a1a); m.side = THREE.FrontSide; }
+            else if (n === "Shoes") { m.color.set(0x6a4a30); m.normalMap = null; }
+
+            m.needsUpdate = true;
+
+            o.material = m;
+
+            mats.push(m);
+        });
+
+        // short hair (a small cap on the top and back of the head), eyebrows and a SMILE, on the head bone
+        const hb = bones["Head_08"];
+
+        const hairMat = new THREE.MeshStandardMaterial({ color: 0x0e0b0a, roughness: 0.95, transparent: true, opacity: 0 });
+
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI * 0.42), hairMat);
+
+        cap.scale.set(0.108, 0.15, 0.128);
+
+        cap.position.set(0, 0.0495, 0.034);
+
+        cap.rotation.x = -0.32;
+
+        hb.add(cap);
+
+        mats.push(hairMat);
+
+        const browMat = new THREE.MeshStandardMaterial({ color: 0x1a120e, roughness: 1, transparent: true, opacity: 0 });
+
+        for (const sx of [-1, 1]) {
+
+            const brow = new THREE.Mesh(new THREE.CapsuleGeometry(0.0034, 0.03, 3, 6), browMat);
+
+            brow.position.set(sx * 0.03, 0.0925, 0.1305);
+
+            brow.rotation.z = Math.PI / 2 + sx * 0.07;
+
+            hb.add(brow);
+        }
+
+        mats.push(browMat);
+
+        // the smile: a thin curved tube lying on the lips
+        const pts = [];
+
+        for (let i = -4; i <= 4; i++) {
+
+            const x = (i / 4) * 0.027, k = (x / 0.027) * (x / 0.027);
+
+            pts.push(new THREE.Vector3(x, 0.0045 - 0.0085 * (1 - k), 0.1455 - 0.008 * k));
+        }
+
+        const smileMat = new THREE.MeshStandardMaterial({ color: 0x8a3a2c, roughness: 0.6, transparent: true, opacity: 0 });
+
+        hb.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.0034, 6, false), smileMat));
+
+        mats.push(smileMat);
+
+        model.ramu = {
+            ready: true,
+            setOpacity(v) { for (const m of mats) { m.opacity = v; m.transparent = v < 0.999; } }
+        };
+    }
+
     loadGhostGLB().then((gltf) => {
         try { glb = setupGLB(gltf); }
         catch (e) { console.warn("ghost model: could not use the GLB, keeping the built-in body", e); }
@@ -1439,6 +1581,8 @@ export function createGhostModel(scene) {
         });
         g.scale.setScalar(GLB_SCALE);
         root.add(g);
+
+        if (opts.ramu) styleRamu(g, bones);
 
         // hide the old procedural body (but keep the rope coil in the hand)
         body.traverse((o) => { if (o.isMesh && !underNode(o, rope.coil)) o.visible = false; });
@@ -1480,9 +1624,11 @@ export function createGhostModel(scene) {
 
         // the rope coil now sits in the GLB hand
         const handL = bones["LeftHand_017"];
-        handL.add(rope.coil);
-        rope.coil.position.set(0, 0.1, 0.0);
-        rope.coil.rotation.set(0, 0, 0);
+        if (!opts.ramu) {
+            handL.add(rope.coil);
+            rope.coil.position.set(0, 0.1, 0.0);
+            rope.coil.rotation.set(0, 0, 0);
+        }
         const handLocal = new THREE.Vector3(0, 0.11, 0);
         model.handPos = (out) => { handL.updateWorldMatrix(true, false); out.copy(handLocal); return handL.localToWorld(out); };
 

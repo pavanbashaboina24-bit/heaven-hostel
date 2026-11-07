@@ -973,7 +973,7 @@ export function buildTerrace(
     for (let i = 0; i < 12; i++) {
 
         R.pln(
-            m.paper, 0.25, 0.32,
+            m.note, 0.25, 0.32,
             -13 + rng() * 26, 0.015, -13 + rng() * 26,
             { rx: -Math.PI / 2, rz: rng() * 6 }
         );

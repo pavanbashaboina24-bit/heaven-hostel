@@ -5,6 +5,7 @@ import { createGhostModel } from "./ghostmodel.js";
 import { anim, ghostFx } from "./haunted.js";
 import { audio } from "./audio.js";
 import { events } from "./events.js";
+import { inventory } from "./inventory.js";
 
 // ======================================================
 // THE GHOST OF HAVEN HOSTEL
@@ -305,6 +306,12 @@ export class GhostSystem {
         this.player = o.player;
         this.cs = o.collisionSystem;
         this.inter = o.interactionSystem;
+
+        // the ghost is shut inside the hostel: he starts only when the lock of the main door is
+        // opened, and then he steps OUT of that door (main-door-unlocked is sent by yard.js)
+        this.doorSpawn = null;
+
+        events.on("main-door-unlocked", (d) => { this.doorSpawn = d || null; this.cool = 0.4; });
 
         // ---- difficulty ----
         let diff = GHOST_CFG.difficulty;
@@ -621,6 +628,8 @@ export class GhostSystem {
 
         this.enabled = enable !== false;
 
+        this.doorSpawn = null;
+
         this.despawn(true);
 
         this.kill = null;
@@ -774,14 +783,27 @@ export class GhostSystem {
 
     beginSpawn() {
 
-        const n = this.chooseSpawn();
+        // the very first time: he comes out of the main door (the door that was just unlocked)
+        let n = null, fromDoor = false;
+
+        if (this.doorSpawn) {
+
+            fromDoor = true;
+
+
+            n = nearestNode(this.doorSpawn.x, this.doorSpawn.z, 0, ["hall", "door", "room"]);
+
+            this.doorSpawn = null;
+        }
+
+        if (!n) n = this.chooseSpawn();
 
         if (!n) {
             this.cool = 6;
             return;
         }
 
-        this.spawnPlan = { node: n, t: rnd(2.5, 4.5) };
+        this.spawnPlan = { node: n, t: fromDoor ? rnd(1.2, 2.0) : rnd(2.5, 4.5) };
 
         this.state = "pending";
 
@@ -1633,9 +1655,96 @@ export class GhostSystem {
     // ==================================================
     // PER-FRAME
     // ==================================================
+    // ---- BLOOD on the ghost's face: when he catches you, blood drips down his face
+    // (real drops falling in the 3D world, not a screen effect), and then he drags you
+    bloodUpdate(dt, on) {
+
+        if (!this.blood) {
+
+            const scene = this.model.root.parent;
+
+            if (!scene) return;
+
+            const redM = new THREE.MeshBasicMaterial({ color: 0xa0060f });
+
+            const darkM = new THREE.MeshBasicMaterial({ color: 0x560209 });
+
+            const g = new THREE.Group();
+
+            const drops = [], streaks = [];
+
+            for (let i = 0; i < 9; i++) {
+
+                const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.009, 0.034, 3, 6), i % 2 ? redM : darkM);
+
+                g.add(m);
+
+                drops.push({ m, ph: i / 9, ox: ((i % 5) - 2) * 0.026, oy: (i % 3) * 0.018 });
+            }
+
+            for (let i = 0; i < 4; i++) {
+
+                const m = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0035, 1, 5), i % 2 ? darkM : redM);
+
+                g.add(m);
+
+                streaks.push({ m, ox: (i - 1.5) * 0.04, len: 0.16 + (i % 2) * 0.1 });
+            }
+
+            g.visible = false;
+
+            scene.add(g);
+
+            this.blood = { g, drops, streaks, t: 0 };
+        }
+
+        const b = this.blood;
+
+        if (!on) { b.g.visible = false; b.t = 0; return; }
+
+        b.t += dt;
+
+        this.model.eyePos(this.eye);
+
+        const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);   // the way his face looks
+        const rx = Math.cos(this.yaw), rz = -Math.sin(this.yaw);    // his right
+
+        const ex = this.eye.x + fx * 0.1, ey = this.eye.y, ez = this.eye.z + fz * 0.1;
+
+        b.g.visible = true;
+
+        // wet streaks running down from the eyes and forehead (they grow in during the first second)
+        const grow = Math.min(1, b.t / 0.9);
+
+        for (const s of b.streaks) {
+
+            const L = s.len * grow;
+
+            s.m.scale.set(1, L, 1);
+
+            s.m.position.set(ex + rx * s.ox, ey + 0.05 - L / 2, ez + rz * s.ox);
+        }
+
+        // drops fall from the streaks, faster and faster, again and again
+        for (const d of b.drops) {
+
+            const k = ((b.t * 0.9 + d.ph) % 1);
+
+            const fall = k * k * 0.55;
+
+            d.m.position.set(ex + rx * d.ox, ey + 0.04 - d.oy - fall, ez + rz * d.ox);
+
+            d.m.scale.set(1, 0.8 + k * 1.6, 1);
+
+            d.m.visible = b.t > d.ph * 0.6;
+        }
+    }
+
     update(dt, t) {
 
         this.clock += dt;
+
+        this.bloodUpdate(dt, !!this.kill && !this.dead);
 
         if (!this.enabled) return;
 
@@ -1653,6 +1762,9 @@ export class GhostSystem {
         }
 
         if (this.dead) return;
+
+        // ---------------- nothing happens before the main door's lock is opened ----------------
+        if (!inventory.flag("main_unlocked")) return;
 
         // ---------------- the player is down in the cellar ----------------
         if (this.cellarVisit(dt)) return;

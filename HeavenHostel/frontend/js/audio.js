@@ -35,13 +35,19 @@ const SAMPLE_DIR = "./assets/sounds/";
 
 // ---- realistic one-shot sounds (made for this game, see assets/sounds/*.wav) ----
 //   step_<surface>_1..6   one footstep       run_<surface>_1..4   one running step
-//   surface = tile | concrete | metal | stairs | dirt
+//   surface = tile | concrete | metal | stairs | dirt | grass | hostel
+//   grass  = your recording of a step on grass (the yard): step_grass_*.wav / run_grass_*.wav
+//   hostel = your recording of a step inside the hostel:   step_hostel_*.wav / run_hostel_*.wav
 //   door_open_<room|main|gate>_1..2   door_close_<room|main|gate>_1..2
-const SURFACES = ["tile", "concrete", "metal", "stairs", "dirt"];
+const SURFACES = ["tile", "concrete", "metal", "stairs", "dirt", "grass", "hostel"];
+// how many recorded variants each surface has (your own grass / hostel recordings have 3 + 2)
+const STEPS = (sf) => (sf === "grass" || sf === "hostel" ? 3 : 6);
+const RUNS = (sf) => (sf === "grass" || sf === "hostel" ? 2 : 4);
+
 const NEW_SAMPLES = {};
 for (const sf of SURFACES) {
-    for (let i = 1; i <= 6; i++) NEW_SAMPLES["step_" + sf + "_" + i] = "step_" + sf + "_" + i + ".wav";
-    for (let i = 1; i <= 4; i++) NEW_SAMPLES["run_" + sf + "_" + i] = "run_" + sf + "_" + i + ".wav";
+    for (let i = 1; i <= STEPS(sf); i++) NEW_SAMPLES["step_" + sf + "_" + i] = "step_" + sf + "_" + i + ".wav";
+    for (let i = 1; i <= RUNS(sf); i++) NEW_SAMPLES["run_" + sf + "_" + i] = "run_" + sf + "_" + i + ".wav";
 }
 for (const k of ["room", "main", "gate"]) {
     for (let i = 1; i <= 2; i++) {
@@ -550,14 +556,16 @@ class AudioEngine {
 
         if (onStairs) return "stairs";
 
-        if (Math.abs(pos.x) > 15 || Math.abs(pos.z) > 15) return "dirt";
+        // outside the building: the dirt road beyond the wall, grass inside the compound
+        if (Math.abs(pos.x) > 15 || Math.abs(pos.z) > 15) return (Math.abs(pos.x) > 27.5 || Math.abs(pos.z) > 27.5) ? "dirt" : "grass";
 
         if (pos.y > 12.5) {
 
             return (pos.x > 11.5 && Math.abs(pos.z) < 4) ? "metal" : "concrete";
         }
 
-        return "tile";
+        // inside the hostel
+        return "hostel";
     }
 
 
@@ -803,21 +811,23 @@ class AudioEngine {
 
         const sf = SURFACES.includes(surface) ? surface : "tile";
 
-        const n = 1 + Math.floor(Math.random() * (running ? 4 : 6));
+        const cnt = running ? RUNS(sf) : STEPS(sf);
+
+        const n = 1 + Math.floor(Math.random() * cnt);
 
         // never the same variant twice in a row
         let key = (running ? "run_" : "step_") + sf + "_" + n;
 
         if (key === this.lastStepKey) {
 
-            key = (running ? "run_" : "step_") + sf + "_" + (1 + (n % (running ? 4 : 6)));
+            key = (running ? "run_" : "step_") + sf + "_" + (1 + (n % cnt));
         }
 
         this.lastStepKey = key;
 
         if (!this.sample(key)) return;
 
-        const vol = sf === "stairs" ? 0.95 : sf === "dirt" ? 0.8 : 0.85;
+        const vol = sf === "stairs" ? 0.95 : sf === "dirt" ? 0.8 : sf === "grass" ? 0.95 : sf === "hostel" ? 0.95 : 0.85;
 
         this.play(key, {
             vol: vol * (running ? 1.1 : 0.9) * (0.88 + Math.random() * 0.24),

@@ -1,7 +1,8 @@
 import * as THREE from
 "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
-import { M, U, newBuilder, bulb, canvasTexture, getPlayer } from "./haunted.js";
+import { M, U, newBuilder, bulb, canvasTexture, getPlayer, frameHooks } from "./haunted.js";
+import { createGhostModel } from "./ghostmodel.js";
 import { inventory } from "./inventory.js";
 import { audio } from "./audio.js";
 import { story, ALL } from "./story.js";
@@ -465,41 +466,72 @@ export function buildMystery(scene, cs, interaction) {
         interaction.add(t);
     }
 
-    // ---- the boy (appears when you put the letter on the bed) ----
-    const ghostMat = new THREE.MeshBasicMaterial({ color: 0xbcd6ff, transparent: true, opacity: 0.0, depthWrite: false });
+    // ---- RAMU, as he really was: the SAME 3D model as the ghost, but a kind boy ----
+    // short hair, healthy skin, clean white clothes, a smile.  He appears when the letter lies
+    // on his bed, says thank you, and is gone.  (He is a boy, so a bit smaller than the ghost.)
+    const ramu = createGhostModel(scene, { ramu: true });
 
-    const boy = new THREE.Group();
+    ramu.root.scale.setScalar(0.82);
 
-    boy.position.set(ROOM.x + bx + 0.1, ROOM.y, ROOM.z + bz - 0.2);
+    ramu.root.visible = false;
 
-    const part = (geo, sx, sy, sz, px, py, pz) => {
+    ramu.root.position.set(ROOM.x + bx + 1.5, ROOM.y, ROOM.z + bz + 0.1);
 
-        const o = new THREE.Mesh(geo, ghostMat);
+    scene.add(ramu.root);
 
-        o.scale.set(sx, sy, sz);
+    const SCRIPT = [
+        { at: 2.2, text: "Ramu:  \"Thank you.\"", sec: 3 },
+        { at: 5.4, text: "Ramu:  \"Now Amma will hear what I could never tell her.\"", sec: 3.6 },
+        { at: 9.2, text: "Ramu:  \"I am not afraid any more. Go home, my friend. Goodbye.\"", sec: 3.8 }
+    ];
 
-        o.position.set(px, py, pz);
+    let ramuT = -1, ramuLine = 0, ramuGone = false;
 
-        boy.add(o);
-    };
+    const fadeOf = (t0) => (t0 < 2 ? t0 / 2 : t0 > 13 ? Math.max(0, 1 - (t0 - 13) / 2) : 1);
 
-    part(U.sph, 0.2, 0.24, 0.2, 0.0, 1.12, 0.1);          // head
+    frameHooks.push((tt, dt) => {
 
-    part(U.box, 0.34, 0.5, 0.2, 0.0, 0.8, 0.0);           // body
+        if (ramuT < 0) return;
 
-    part(U.box, 0.12, 0.12, 0.45, -0.1, 0.55, 0.28);      // legs (sitting on the bed)
+        ramuT += dt;
 
-    part(U.box, 0.12, 0.12, 0.45, 0.1, 0.55, 0.28);
+        const p = getPlayer();
 
-    part(U.box, 0.09, 0.4, 0.09, -0.24, 0.78, 0.1);       // arms
+        const pos = ramu.root.position;
 
-    part(U.box, 0.09, 0.4, 0.09, 0.24, 0.78, 0.1);
+        // he turns to look at you and smiles
+        if (p) {
 
-    boy.visible = false;
+            const dx = p.pos.x - pos.x, dz = p.pos.z - pos.z;
 
-    boy.rotation.y = Math.PI / 2;
+            ramu.root.rotation.y = Math.atan2(-dx, -dz);
 
-    scene.add(boy);
+            ramu.update(dt, { speed: 0, run: false, look: p.pos, open: undefined, calm: 1, leftTo: null, rightTo: null }, null, false);
+        }
+
+        if (ramu.ramu) ramu.ramu.setOpacity(fadeOf(ramuT));
+
+        if (ramuLine < SCRIPT.length && ramuT >= SCRIPT[ramuLine].at) {
+
+            const ln = SCRIPT[ramuLine++];
+
+            inventory.say(ln.text, ln.sec);
+
+            if (ramuLine === 1) audio.play("bell", { vol: 0.5, send: 0.5, ui: true });
+        }
+
+        if (ramuT >= 15 && !ramuGone) {
+
+            ramuGone = true;
+
+            ramu.root.visible = false;
+
+            audio.play("bell", { vol: 0.4, send: 0.6, ui: true });
+
+            try { story.ending(); }
+            catch (e) { events.emit("gameover-story"); if (story.onEnd) story.onEnd(); }
+        }
+    });
 
     // the letter, lying on the shirt once you put it there
     const letterMesh = new THREE.Mesh(U.box, new THREE.MeshBasicMaterial({ color: 0xf0e8cc }));
@@ -560,33 +592,37 @@ export function buildMystery(scene, cs, interaction) {
 
         audio.paper();
 
-        boy.visible = true;
-
         letterMesh.visible = true;
 
-        const t0 = performance.now();
-
-        const fadeIn = () => {
-
-            const k = Math.min(1, (performance.now() - t0) / 1800);
-
-            ghostMat.opacity = 0.55 * k;
-
-            if (k < 1) requestAnimationFrame(fadeIn);
-        };
-
-        fadeIn();
-
-        inventory.say("The letter lies on the shirt. The air in the room grows still...", 3);
-
         inventory.setFlag("game_finished");
+
+        if (ramu.ramu && ramu.ramu.ready) {
+
+            // the letter lies on the bed ... and Ramu appears, smiling
+            inventory.say("The letter lies on his shirt. The air in the room grows warm and still...", 2.4);
+
+            ramu.ramu.setOpacity(0);
+
+            ramu.root.visible = true;
+
+            ramuT = 0;
+
+            ramuLine = 0;
+
+            ramuGone = false;
+
+            return;
+        }
+
+        // (if the model could not load) the ending follows after a moment
+        inventory.say("The letter lies on the shirt. The air in the room grows warm and still...", 3);
 
         setTimeout(() => {
 
             try { story.ending(); }
             catch (e) { events.emit("gameover-story"); if (story.onEnd) story.onEnd(); }
 
-        }, 2600);
+        }, 2800);
     };
 
     interaction.add(trig);
@@ -625,11 +661,13 @@ export function buildMystery(scene, cs, interaction) {
 
         done = false;
 
-        boy.visible = false;
+        ramuT = -1;
+
+        ramu.root.visible = false;
+
+        if (ramu.ramu) ramu.ramu.setOpacity(0);
 
         letterMesh.visible = false;
-
-        ghostMat.opacity = 0;
     });
 }
 
