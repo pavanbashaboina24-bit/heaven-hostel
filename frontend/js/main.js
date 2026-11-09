@@ -258,6 +258,10 @@ document.addEventListener("pointerlockerror", () => {
 document.addEventListener("keydown", (event) => {
 
     if (state.mode !== "playing" || ghosts.cinematic) return;
+
+    // Practice Mode: G = Ghost 3D Model View
+    if (event.key.toLowerCase() === "g" && menu.practice) { menu.openGhostViewInPractice(); return; }
+
     if (event.key.toLowerCase() === "e") {
 
         interactionSystem.interact("E");

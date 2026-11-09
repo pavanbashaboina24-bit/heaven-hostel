@@ -12,6 +12,7 @@
 // Door space: +x is the face you see, z is the width, y is up (the door is 3 high).
 // ======================================================
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import { frameHooks } from "./haunted.js";
 
 const TAU = Math.PI * 2;
 
@@ -310,4 +311,97 @@ export function buildRitualSeal(door, width) {
     };
 
     return hasp;
+}
+
+// ------------------------------------------------------
+// the SACRED THREADS on the doors that start locked (rooms 101 and 104): red + yellow thread
+// tied in knots across the door, with a rusty padlock and a chain.  They disappear when the door unlocks.
+// Door space: the door is 1.4 wide (x), 3 high (y), 0.15 thick (z); both faces get the same threads.
+// ------------------------------------------------------
+export function addSacredThreads(door) {
+
+    const grp = new THREE.Group();
+
+    door.add(grp);
+
+    const red = new THREE.MeshStandardMaterial({ color: 0xa0161a, roughness: 0.85, emissive: 0x200404 });
+
+    const gold = new THREE.MeshStandardMaterial({ color: 0xc9941c, roughness: 0.75, emissive: 0x241804 });
+
+    const iron = new THREE.MeshStandardMaterial({ color: 0x2c2622, roughness: 0.6, metalness: 0.7 });
+
+    const rust = new THREE.MeshStandardMaterial({ color: 0x6b3a20, roughness: 0.8, metalness: 0.4 });
+
+    const face = new THREE.Group();
+
+    const V = (x, y) => new THREE.Vector3(x, y, 0.095);
+
+    const strand = (a, b, mat, sag, rad) => {
+
+        const mid = a.clone().add(b).multiplyScalar(0.5);
+
+        mid.y -= sag; mid.z += 0.004;
+
+        face.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([a, mid, b]), 12, rad, 5, false), mat));
+    };
+
+    const pair = (a, b, sag) => {
+
+        strand(a, b, red, sag, 0.0085);
+
+        strand(a.clone().add(new THREE.Vector3(0.007, 0.012, 0.004)), b.clone().add(new THREE.Vector3(0.007, 0.012, 0.004)), gold, sag + 0.01, 0.0065);
+    };
+
+    const TL = V(-0.62, 0.95), TR = V(0.62, 0.95), C = V(0, 0.15), BL = V(-0.62, -0.7), BR = V(0.62, -0.7), TM = V(0, 1.15), BM = V(0, -0.55);
+
+    pair(TL, C, 0.04); pair(TR, C, 0.04); pair(BL, C, 0.03); pair(BR, C, 0.03);
+    pair(TL, TR, 0.14); pair(TM, C, 0); pair(C, BM, 0);
+
+    for (const q of [TL, TR, C, BL, BR, TM]) {
+
+        const k = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 8), red);
+
+        k.position.copy(q); k.position.z += 0.012;
+
+        face.add(k);
+
+        for (let i = 0; i < 5; i++) {
+
+            const t = new THREE.Mesh(new THREE.CylinderGeometry(0.0025, 0.0025, 0.08, 4), i % 2 ? gold : red);
+
+            t.position.set(q.x + (i - 2) * 0.012, q.y - 0.05, q.z + 0.012);
+
+            t.rotation.z = (i - 2) * 0.2;
+
+            face.add(t);
+        }
+    }
+
+    // a rusty padlock on a chain at the bottom of the star
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 16), rust);
+
+    pad.rotation.x = Math.PI / 2; pad.position.set(0, -0.72, 0.12);
+
+    const shackle = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.011, 6, 12, Math.PI), iron);
+
+    shackle.position.set(0, -0.66, 0.12);
+
+    const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.2, 6), iron);
+
+    chain.position.set(0, -0.58, 0.115);
+
+    face.add(pad, shackle, chain);
+
+    grp.add(face);
+
+    const back = face.clone();
+
+    back.rotation.y = Math.PI;
+
+    grp.add(back);
+
+    // gone as soon as the door is unlocked
+    frameHooks.push(() => { grp.visible = !!door.userData.isLocked; });
+
+    return grp;
 }

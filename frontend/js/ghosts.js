@@ -112,6 +112,9 @@ const DOOR_X = [-10.5, -3.5, 3.5, 10.5];
 const ROOM_CX = [-11, -3.5, 3.5, 11];
 const HALL_X = [-10.5, -7, -3.5, 0, 3.5, 7, 10.5];
 
+let SPIRAL_OPEN = false;     // the door at the top of the back stairs stands open (and is unlocked)
+let YARD_OPEN = false;       // the main door is open: the lawn in front of it is part of his patrol
+
 const LANE_Z = 2.4;     // the two free lanes along the hall (the middle is full of benches)
 
 const NAV = (function build() {
@@ -201,6 +204,23 @@ const NAV = (function build() {
     const STT = add(-13, -3.1, 3, "stair");
     via(lane[2]["1"][0], 3.05, SBT);
     link(SBT, STT, true);
+
+    // the GRASS in front of the main door: a short path out to the road and two bits of lawn.
+    // (he only goes there while the main door stands open; see YARD_OPEN)
+    {
+        const yE = add(16.4, 0, 0, "room", { yard: true });
+        const y1 = add(18.6, 0, 0, "room", { yard: true });
+        const y2 = add(22.0, 0, 0, "room", { yard: true });
+        const y3 = add(19.5, -3.4, 0, "room", { yard: true });
+        const y4 = add(19.5, 3.4, 0, "room", { yard: true });
+
+        link(lane[0]["-1"][6], yE);
+        link(lane[0]["1"][6], yE);
+        link(yE, y1);
+        link(y1, y2);
+        link(y1, y3);
+        link(y1, y4);
+    }
 
     // (the paths over the roof are found by probing the real collision world: see addCrossings)
 
@@ -313,6 +333,9 @@ export class GhostSystem {
 
         events.on("main-door-unlocked", (d) => { this.doorSpawn = d || null; this.cool = 0.4; });
 
+        // the ending cinematic: he is gone for good
+        events.on("outro-start", () => { this.enabled = false; this.kill = null; this.model.setVisible(false); this.model.root.visible = false; });
+
         // ---- difficulty ----
         let diff = GHOST_CFG.difficulty;
         try {
@@ -410,6 +433,8 @@ export class GhostSystem {
         this.makeUI();
 
         // ---- what the player's actions tell him ----
+        events.on("main-door-state", (open) => { YARD_OPEN = !!open; });
+        events.on("spiral-door", (open) => { SPIRAL_OPEN = !!open; });
         events.on("door", () => this.addNoise(11));
         events.on("flashlight", () => this.addNoise(5));
         events.on("hide", () => this.onPlayerHide());
@@ -425,7 +450,7 @@ export class GhostSystem {
 
         for (const d of anim.doors) {
 
-            if (d.kind !== "room") continue;
+            if (d.kind !== "room" && d.kind !== "main") continue;
 
             const mesh = d.pivot.children[0];
 
@@ -576,6 +601,59 @@ export class GhostSystem {
         }
         if (best) NAV.link(NAV.stairTop, best);
         this.terraceCells = cell.size;
+
+        // ---- the BACK STAIRS (the iron spiral tower outside the hostel): over the bridge and down the spiral ----
+        // (the same numbers as SPIRAL in spiral.js: centre -20.5,12, 16 treads a turn, 44 treads, 12 m high)
+        {
+            const SP = { cx: -20.5, cz: 12.0, per: 16, n: 44, top: 12 };
+            const dA = (Math.PI * 2) / SP.per, rise = SP.top / SP.n;
+            const a0 = -((SP.n - 1) % SP.per + 0.5) * dA;
+            const ang = (j) => a0 + (j % SP.per + 0.5) * dA;
+            const sp = (x, z, y, type) => NAV.add(x, z, floorOf(y), type, { y, spiral: true });
+
+            // the door at the top of the stairs + the bridge
+            const dN = sp(-14.1, 12.0, 12, "stair");
+            const b1 = sp(-16.2, 12.0, 12, "stair");
+            const b2 = sp(-17.7, 12.0, 12, "stair");
+
+            // nearest terrace cell to the door
+            let tb = null, td = 1e9;
+            for (const c of cell.values()) {
+                const d = Math.hypot(c.x - dN.x, c.z - dN.z);
+                if (d < td) { td = d; tb = c; }
+            }
+            if (tb && td < 6) NAV.link(tb, dN);
+            NAV.link(dN, b1);
+            NAV.link(b1, b2);
+
+            // down the spiral: a node every two treads, halfway out on the tread
+            let prev = b2;
+            for (let j = SP.n - 1; j >= 1; j -= 2) {
+                const a = ang(j);
+                const r = j === SP.n - 1 ? 1.9 : 1.5;
+                const n = sp(SP.cx + Math.cos(a) * r, SP.cz + Math.sin(a) * r, (j + 1) * rise, "stair");
+                NAV.link(prev, n);
+                prev = n;
+            }
+
+            // the foot of the stairs (inside the fence): he can walk there to look around
+            const af = ang(0);
+            const foot = NAV.add(SP.cx + Math.cos(af) * 1.9, SP.cz + Math.sin(af) * 1.9, 0, "room", { y: rise, spiral: true });
+            NAV.link(prev, foot);
+
+            this.spiralNodes = NAV.nodes.filter((q) => q.spiral).length;
+            this.spiralLinked = !!(tb && td < 6);
+
+            // a self-check: a path must exist from the roof stairs down to the foot of the back stairs
+            const pth = findPath(NAV.stairTop.i, foot.i);
+
+            this.spiralPathLen = pth ? pth.length : 0;
+
+            // and one from the far end of the ground floor out to every bit of lawn
+            const start = NAV.lane[0]["-1"][0].i;
+
+            this.yardOk = NAV.nodes.filter((q) => q.yard).every((q) => { const w = findPath(start, q.i); return !!w && w.length > 1; });
+        }
     }
 
     // every place where the player could hide (cabinets, tables, beds)
@@ -1332,6 +1410,9 @@ export class GhostSystem {
 
         const pos = this.model.root.position;
 
+        // the door at the top of the back stairs
+        if (!SPIRAL_OPEN && this.fl === 3 && Math.hypot(pos.x + 14.1, pos.z - 12) < 3.4) events.emit("ghost-opens-spiral-door");
+
         const reach = force ? 1.6 : 1.5;
 
         for (const dd of this.doors) {
@@ -1436,7 +1517,7 @@ export class GhostSystem {
 
         const seenSet = this.visitedNodes;
 
-        const nodesOf = (f) => NAV.nodes.filter((n) => n.fl === f && !n.locked &&
+        const nodesOf = (f) => NAV.nodes.filter((n) => n.fl === f && !n.locked && !(n.yard && !YARD_OPEN) && !(n.spiral && !SPIRAL_OPEN) &&
             (n.type === "hall" || n.type === "room" || n.type === "stair"));
 
         // what is still to do on a floor: every ROOM he has not been in (halls and
@@ -1581,7 +1662,7 @@ export class GhostSystem {
             if (Math.random() < this.L.checkHide) list.push({ kind: "spot", spot: s });
         }
 
-        const rooms = NAV.nodes.filter((n) => n.fl === fl && n.type === "room" && !n.locked &&
+        const rooms = NAV.nodes.filter((n) => n.fl === fl && n.type === "room" && !n.locked && !n.yard && !n.spiral &&
             Math.hypot(n.x - c.x, n.z - c.z) < 14).sort(() => Math.random() - 0.5).slice(0, 2);
 
         for (const r of rooms) list.push({ kind: "point", x: r.x, z: r.z, fl });
@@ -2994,7 +3075,7 @@ export class GhostSystem {
 
         const pf = this.playerFloor();
 
-        let cand = NAV.nodes.filter((n) => n.fl === pf && !n.locked && (n.type === "hall" || n.type === "room") &&
+        let cand = NAV.nodes.filter((n) => n.fl === pf && !n.locked && !n.yard && !n.spiral && (n.type === "hall" || n.type === "room") &&
             Math.hypot(n.x - c.x, n.z - c.z) > 9 && Math.hypot(n.x - c.x, n.z - c.z) < 20);
 
         if (!cand.length) cand = NAV.nodes.filter((n) => n.fl === pf && !n.locked && n.type === "hall");

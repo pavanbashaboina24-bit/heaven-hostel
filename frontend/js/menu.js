@@ -498,6 +498,10 @@ export const menu = {
 
         const p = player.pos;
 
+        // Practice Mode is its own thing: only the movement exercises, on the ground floor,
+        // no stats, achievements, saves or story
+        if (this.practice) { this.tickPractice(player, dt); return; }
+
         stats.play += dt;
 
         if (stats.play >= 600) this.unlock("night");
@@ -613,10 +617,7 @@ export const menu = {
             ["run", "Run (hold Shift)"],
             ["jump", "Jump (Space)"],
             ["door", "Open a door (E)"],
-            ["flash", "Flashlight on / off (F)"],
-            ["hide", "Hide in a cabinet (E)"],
-            ["stairs", "Climb the stairs up"],
-            ["ladder", "Climb the terrace ladder"]
+            ["flash", "Flashlight on / off (F)"]
         ];
 
         for (const [id, text] of items) {
@@ -630,7 +631,97 @@ export const menu = {
             list.appendChild(li);
         }
 
+        // the ghost model viewer lives INSIDE Practice Mode
+        const panel = list.parentElement;
+
+        const old = $("practice-gv");
+
+        if (old) old.remove();
+
+        const gv = document.createElement("button");
+
+        gv.id = "practice-gv";
+
+        gv.textContent = "Ghost 3D Model View  (G)";
+
+        gv.onclick = () => this.openGhostViewInPractice();
+
+        panel.appendChild(gv);
+
         document.body.classList.add("practice");
+    },
+
+    openGhostViewInPractice() {
+
+        if (!this.practice) return;
+
+        try { document.exitPointerLock(); } catch (e) { /* touch */ }
+
+        openGhostView();
+    },
+
+    // every frame in Practice Mode: movement exercises + you can not leave the ground floor
+    tickPractice(player, dt) {
+
+        const p = player.pos;
+
+        const moving = player.keys.forward || player.keys.back || player.keys.left || player.keys.right;
+
+        if (moving && player.keys.run && !player.hidden && !player.anim) {
+
+            this.practiceRun += dt;
+
+            if (this.practiceRun >= 2) this.practiceTick("run");
+        }
+
+        if (this.lastPos && !player.anim && !player.hidden) {
+
+            const d = Math.hypot(p.x - this.lastPos.x, p.z - this.lastPos.z);
+
+            if (d < 1.5) this.practiceDist += d;
+        }
+
+        this.lastPos = { x: p.x, z: p.z };
+
+        if (this.practiceDist >= 4) this.practiceTick("walk");
+
+        if (!player.grounded && player.verticalVelocity > 1) this.practiceTick("jump");
+
+        if (this.lastYaw !== undefined) {
+
+            this.practiceLook += Math.abs(player.yaw - this.lastYaw);
+
+            if (this.practiceLook > 1.5) this.practiceTick("look");
+        }
+
+        this.lastYaw = player.yaw;
+
+        // ground floor only: if you start up the stairs (or fall below), you are put back where you stood
+        if (p.y < 3.0 && p.y > 0.8) {
+
+            this.practiceSafe = { x: p.x, y: p.y, z: p.z };
+        }
+
+        if (p.y > 3.1 || p.y < 0.5) {
+
+            const s = this.practiceSafe || { x: 0, y: 1.7, z: 2.4 };
+
+            p.set(s.x, s.y, s.z);
+
+            player.camY = p.y;
+
+            player.verticalVelocity = 0;
+
+            player.grounded = true;
+
+            player._airTop = null;
+
+            player.fatalFall = 0;
+
+            player.camera.position.copy(p);
+
+            this.toast("Practice", "Practice Mode is for the ground floor only.");
+        }
     },
 
     stopPractice() {

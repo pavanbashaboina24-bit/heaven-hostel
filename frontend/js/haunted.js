@@ -45,13 +45,18 @@ const PHONE = (() => {
 
 export const SETTINGS = {
 
-    ambient: PHONE ? 1.05 : 0.46,         // overall darkness (lower = darker)
+    // OUTSIDE (yard, roof): the dark night it always was
+    ambient: PHONE ? 1.05 : 0.46,
+    fogDensity: PHONE ? 0.045 : 0.066,
 
-    fogDensity: PHONE ? 0.045 : 0.066,    // thicker fog = scarier
+    // INSIDE the hostel: lit with normal brightness, the lights never go out
+    ambientIn: PHONE ? 1.5 : 1.45,
+    hemiIn: 0.9,
+    fogIn: 0.018,
 
     flashlight: PHONE ? 150 : 95,         // flashlight strength
 
-    bulb: PHONE ? 26 : 16,                // strength of the flickering room bulbs
+    bulb: PHONE ? 30 : 24,                // strength of the room bulbs
 
     vignette: false                       // (OFF: no dark/blurry screen edges at all)
 };
@@ -271,6 +276,70 @@ function wallTex() {
                 );
             }
 
+            // ---- decades of neglect: long brown water stains running down from the ceiling ----
+            for (let i = 0; i < 6; i++) {
+
+                const x = rnd() * w, wd = 5 + rnd() * 16, len = 120 + rnd() * 300;
+
+                const gr = g.createLinearGradient(0, 0, 0, len);
+
+                gr.addColorStop(0, "rgba(74,54,30,0.42)");
+                gr.addColorStop(0.7, "rgba(66,48,28,0.22)");
+                gr.addColorStop(1, "rgba(60,44,26,0)");
+
+                g.fillStyle = gr;
+
+                g.beginPath();
+                g.moveTo(x, 0);
+                g.lineTo(x + wd, 0);
+                g.lineTo(x + wd * 0.5 + (rnd() - 0.5) * 8, len);
+                g.lineTo(x - wd * 0.2, len * 0.9);
+                g.fill();
+
+                g.fillStyle = "rgba(48,34,20,0.35)";
+                g.beginPath(); g.ellipse(x + wd * 0.35, len, wd * 0.5, 4 + rnd() * 5, 0, 0, Math.PI * 2); g.fill();
+            }
+
+            // ---- peeling paint: the plaster shows underneath, the old paint curls at the edge ----
+            for (let i = 0; i < 9; i++) {
+
+                const cx = rnd() * w, cy = rnd() * h, rr = 14 + rnd() * 34;
+
+                g.fillStyle = "rgba(78,70,58,0.8)";
+                g.beginPath();
+                for (let k = 0; k < 9; k++) {
+
+                    const a = (k / 9) * Math.PI * 2, rad = rr * (0.55 + rnd() * 0.6);
+
+                    if (k === 0) g.moveTo(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad);
+                    else g.lineTo(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad);
+                }
+                g.closePath();
+                g.fill();
+
+                g.strokeStyle = "rgba(128,120,98,0.55)";
+                g.lineWidth = 2;
+                g.stroke();
+
+                g.fillStyle = "rgba(34,28,22,0.35)";
+                g.beginPath(); g.ellipse(cx + rr * 0.2, cy + rr * 0.3, rr * 0.5, rr * 0.3, 0.4, 0, Math.PI * 2); g.fill();
+            }
+
+            // ---- mould: dark olive speckle clusters, thickest near the floor and in the damp ----
+            for (let k = 0; k < 16; k++) {
+
+                const cx = rnd() * w, cy = rnd() < 0.6 ? h - rnd() * 140 : rnd() * h;
+
+                for (let i = 0; i < 40; i++) {
+
+                    g.fillStyle = "rgba(" + (24 + rnd() * 22) + "," + (36 + rnd() * 24) + ",20," + (0.25 + rnd() * 0.4) + ")";
+                    g.fillRect(cx + (rnd() - 0.5) * 46, cy + (rnd() - 0.5) * 30, 1 + rnd() * 3, 1 + rnd() * 3);
+                }
+            }
+
+            // ---- salt bloom where the damp dries ----
+            for (let i = 0; i < 6; i++) blob(g, rnd() * w, rnd() * h, 10 + rnd() * 24, "rgba(190,184,164,0.12)");
+
         }, true)
     );
 }
@@ -324,6 +393,26 @@ function floorTex() {
                     g, rnd() * w, rnd() * h, 7 + rnd() * 10,
                     "rgba(5,5,5,0.8)", 1.5
                 );
+            }
+
+            // ---- dirty floors: damp patches, grime, dried water rings, scattered debris ----
+            for (let i = 0; i < 9; i++) blob(g, rnd() * w, rnd() * h, 18 + rnd() * 44, "rgba(26,30,22,0.28)");
+
+            for (let i = 0; i < 5; i++) {
+
+                const x = rnd() * w, y = rnd() * h, r2 = 10 + rnd() * 26;
+
+                g.strokeStyle = "rgba(90,74,50,0.28)";
+                g.lineWidth = 2;
+                g.beginPath(); g.arc(x, y, r2, 0, Math.PI * 2); g.stroke();
+            }
+
+            for (let i = 0; i < 160; i++) {
+
+                const c = 30 + rnd() * 70;
+
+                g.fillStyle = "rgba(" + c + "," + (c - 6) + "," + (c - 12) + "," + (0.35 + rnd() * 0.4) + ")";
+                g.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 3, 1 + rnd() * 2);
             }
 
         }, true)
@@ -2934,11 +3023,11 @@ export function setupHauntedAtmosphere(scene) {
 
     scene.background = new THREE.Color(0x020308);
 
-    scene.fog = new THREE.FogExp2(PHONE ? 0x140a26 : 0x070b08, SETTINGS.fogDensity);     // a faint sick green mist
+    scene.fog = new THREE.FogExp2(PHONE ? 0x140a26 : 0x070b08, SETTINGS.fogDensity);
 
-    ambientLight = new THREE.AmbientLight(PHONE ? 0x9a8ed0 : 0x7a8672, SETTINGS.ambient);      // faded green-grey
+    ambientLight = new THREE.AmbientLight(0xe6dcc4, SETTINGS.ambient);      // (brightened inside the hostel every frame: see applyLight)
 
-    hemiLight = new THREE.HemisphereLight(PHONE ? 0x6a7ae0 : 0x4c5c48, PHONE ? 0x4a1f38 : 0x2c120a, PHONE ? 0.8 : 0.4);   // dirty green above, old brown-maroon bounce below
+    hemiLight = new THREE.HemisphereLight(0xd8dccc, 0x8a7a64, PHONE ? 0.8 : 0.35);   // dirty green above, old brown-maroon bounce below
 
     scene.add(ambientLight);
 
@@ -2947,7 +3036,7 @@ export function setupHauntedAtmosphere(scene) {
     // two flickering lights that follow the player
     for (let i = 0; i < 2; i++) {
 
-        const l = new THREE.PointLight(0xffc27a, 0, 11, 2);
+        const l = new THREE.PointLight(0xe3bd72, 0, 11, 2);        // dim, dirty yellow tube/bulb
 
         scene.add(l);
 
@@ -3014,7 +3103,7 @@ export function attachFlashlight(camera) {
     }
 
     flashlight = new THREE.SpotLight(
-        0xfff1d0, SETTINGS.flashlight, 24, 0.5, 0.55, 1.6
+        0xf2dfb4, SETTINGS.flashlight, 22, 0.46, 0.7, 1.8
     );
 
     flashlight.position.set(0.15, -0.1, 0);
@@ -3363,7 +3452,7 @@ export function updateHaunted(t, dt, camera, playing) {
         p.fade = Math.min(1, p.fade + dt * 4);
 
         p.light.intensity = target
-            ? SETTINGS.bulb * target.lvl * (target.power || 1) * p.fade
+            ? SETTINGS.bulb * Math.max(0.8, target.lvl) * Math.max(0.8, target.power || 1) * p.fade
             : 0;
     }
 
@@ -3376,12 +3465,26 @@ export function updateHaunted(t, dt, camera, playing) {
     // fog: thinner outside so the hostel can be seen from the gate
     if (SCENE && SCENE.fog) {
 
+        const outside = zone === "Y" || zone === "T" || zone === "T-R";
+
         const wanted =
             zone === "Y" ? 0.034 :
             zone === "T" ? 0.042 :
-            SETTINGS.fogDensity;
+            outside ? SETTINGS.fogDensity :
+            SETTINGS.fogIn;
 
         SCENE.fog.density += (wanted - SCENE.fog.density) * Math.min(1, dt * 1.5);
+
+        // light inside, dark night outside: blend smoothly when you walk through the doors
+        lightMix += ((outside ? 0 : 1) - lightMix) * Math.min(1, dt * 2.5);
+
+        applyLight();
+
+        SCENE.fog.color.setRGB(
+            (PHONE ? 0.078 : 0.027) + lightMix * 0.14,
+            (PHONE ? 0.039 : 0.043) + lightMix * 0.14,
+            (PHONE ? 0.149 : 0.031) + lightMix * 0.13
+        );
     }
 
     // flashlight flickers once in a while
@@ -3960,11 +4063,24 @@ export function setMenuMode(on) {
     }
 }
 
+let lightMix = 0;           // 0 = outside (dark night), 1 = inside the hostel (lit)
+
+let brightV = 1;            // the player's brightness setting
+
+function applyLight() {
+
+    const k = lightMix;
+
+    if (ambientLight) ambientLight.intensity = (SETTINGS.ambient + (SETTINGS.ambientIn - SETTINGS.ambient) * k) * brightV;
+
+    if (hemiLight) hemiLight.intensity = ((PHONE ? 0.8 : 0.35) + (SETTINGS.hemiIn - (PHONE ? 0.8 : 0.35)) * k) * brightV;
+}
+
 export function setBrightness(v) {
 
-    if (ambientLight) ambientLight.intensity = SETTINGS.ambient * v;
+    brightV = v;
 
-    if (hemiLight) hemiLight.intensity = (PHONE ? 0.8 : 0.35) * v;
+    applyLight();
 }
 
 // every door shut again (new game) - silently

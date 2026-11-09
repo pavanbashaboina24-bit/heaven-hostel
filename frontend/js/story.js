@@ -621,9 +621,9 @@ class Story {
             { img: "story_gate.jpg", fx: ["fog", "dust", "zoom"],
               text: "They say Ramu still walks its halls.\n\nNobody knows why." },
             { img: "story_empty.jpg", fx: ["fog", "eyes", "flicker", "dust"],
-              text: "His mind never came back from that night.\n\nSo every time the gate opens, he sees a shape in the dark and thinks:\n<em>my friends have come back.</em>" },
+              text: "His mind never came back from that night.\n\nSo every time the gate opens, he sees a shape in the dark and thinks:\nmy friends have come back." },
             { img: "story_ghost_walk.jpg", fx: ["flash", "blood", "fog", "shake"],
-              text: "He runs to them, smiling, calling their names.\n\nBut they are strangers, and he does not understand.\nWhen they scream and run, he thinks they are laughing at him again...\n\nAnd he <em>kills everyone who walks in through that gate.</em>" },
+              text: "He runs to them, smiling, calling their names.\n\nBut they are strangers, and he does not understand.\nWhen they scream and run, he thinks they are laughing at him again...\n\nAnd he kills everyone who walks in through that gate." },
             { img: "story_night.jpg", title: "YOU CAME TO FIND OUT", fx: ["flicker", "eyes", "flash", "dust"],
               text: "Find his notes. Solve his puzzles.\nLearn the truth, and give him back what he lost." }
         ], { last: "Enter  -  begin", skip: true, onDone: () => { if (onStart) onStart(); } });
@@ -760,6 +760,43 @@ class Story {
         inventory.openReader({ title: LETTER.title, text: LETTER.text, mode: "view" });
 
         inventory.say("Take the letter to the hidden door in the mess hall.", 5);
+    }
+
+    // after you have walked out: pictures of the girl taking the letter home and the family crying over it
+    outroPictures() {
+
+        this.pages([
+            { img: "outro_gate.jpg", fx: ["dust", "fog", "zoom"],
+              text: "In the cold light of morning, a girl comes up the road to the old gate.\n\nOn a flat stone lies a letter, written in a boy's careful hand.\nIt is addressed to her mother." },
+            { img: "outro_home_walk.jpg", fx: ["dust", "zoom"],
+              text: "She does not wait.\n\nShe holds the letter to her chest and runs the whole way home, to the village under the tamarind tree." },
+            { img: "outro_read.jpg", fx: ["dust", "fog"],
+              text: "In the little house at Kothapalli she reads it aloud, and her voice breaks.\n\n\"I am sorry I never told you how much it hurt. I loved you all. I was only too tired to say it.\"" },
+            { img: "outro_cry.jpg", fx: ["dust", "zoom"],
+              text: "Her mother covers her face. Her father cannot lift his head.\n\nFor the first time in many years, the whole family cries together.\n\nRamu was heard at last." },
+            { img: "story_village.jpg", title: "THE END", fx: ["dust", "zoom"],
+              text: "Ramu is at peace, and his family finally know the truth.\n\nThank you for playing Heaven Hostel." }
+        ], {
+            last: "Enter  -  back to the menu",
+            onDone: () => {
+                events.emit("gameover-story");
+                if (this.onEnd) this.onEnd();
+            }
+        });
+    }
+
+    // (older single card, no longer used)
+    theEnd() {
+
+        this.pages([
+            { img: "story_village.jpg", title: "THE END", text: "Ramu is at peace, and his family finally know the truth.\n\nThank you for playing Heaven Hostel." }
+        ], {
+            last: "Enter  -  back to the menu",
+            onDone: () => {
+                events.emit("gameover-story");
+                if (this.onEnd) this.onEnd();
+            }
+        });
     }
 
     ending() {

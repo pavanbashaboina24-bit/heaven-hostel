@@ -1434,6 +1434,9 @@ export function createGhostModel(scene, opts) {
     // ---------- the kind Ramu: clean clothes, healthy skin, normal eyes, short hair, a smile ----------
     function styleRamu(g, bones) {
 
+        // other people in the ending (the girl, her mother, her father) reuse this model with their own clothes and hair
+        const OUT = opts.outfit || {};
+
         const tex = (w, h, draw, flip) => { const t = cv(w, h, draw, true); t.flipY = flip === true; return t; };
 
         const noise = (gx, w, h, n, a) => { for (let i = 0; i < n; i++) { gx.fillStyle = "rgba(0,0,0," + (Math.random() * a) + ")"; gx.fillRect(Math.random() * w, Math.random() * h, 2, 2); } };
@@ -1482,7 +1485,7 @@ export function createGhostModel(scene, opts) {
             if (n === "Rags" || n === "NooseRope" || n === "TeethLower" || n === "TeethUpper") { o.visible = false; return; }
 
             // a good boy's hair: the model's own hair, cut to a neat short style (fringe to the brows, over the ears)
-            if (n === "Hair" && o.geometry && o.geometry.index) {
+            if (n === "Hair" && o.geometry && o.geometry.index && OUT.hair !== "long") {
 
                 const pos = o.geometry.attributes.position, src = o.geometry.index.array, keep = [];
 
@@ -1496,6 +1499,21 @@ export function createGhostModel(scene, opts) {
                 for (let i = 0; i + 2 < src.length; i += 3) {
                     const a = src[i], b = src[i + 1], c = src[i + 2];
                     if (pos.getY(a) > cut(a) && pos.getY(b) > cut(b) && pos.getY(c) > cut(c)) keep.push(a, b, c);
+                }
+
+                if (keep.length > 300) o.geometry.setIndex(keep);
+            }
+
+            // long hair (the girl, the mother): keep it long at the back and sides, but nothing hangs over the face
+            if (n === "Hair" && o.geometry && o.geometry.index && OUT.hair === "long") {
+
+                const pos = o.geometry.attributes.position, src = o.geometry.index.array, keep = [];
+
+                const front = (v) => pos.getZ(v) > 0.035 && pos.getY(v) < 1.86 && pos.getY(v) > 1.1;
+
+                for (let i = 0; i + 2 < src.length; i += 3) {
+                    const a = src[i], b = src[i + 1], c = src[i + 2];
+                    if (!(front(a) || front(b) || front(c))) keep.push(a, b, c);
                 }
 
                 if (keep.length > 300) o.geometry.setIndex(keep);
@@ -1520,6 +1538,10 @@ export function createGhostModel(scene, opts) {
             else if (n === "EyeL" || n === "EyeR") { clean(eyeTex, 0x1a1a1a); m.side = THREE.FrontSide; }
             else if (n === "Shoes") { m.color.set(0x6a4a30); m.normalMap = null; }
             else if (n === "Hair") { m.color.set(0x7a5a46); m.emissive.set(0x1a0f08); m.roughness = 0.7; m.side = THREE.DoubleSide; }
+
+            if (OUT.shirt !== undefined && n === "Shirt") { m.map = null; m.color.set(OUT.shirt); m.emissive.set(0x1a1410); }
+            if (OUT.pants !== undefined && n === "Trousers") { m.map = null; m.color.set(OUT.pants); m.emissive.set(0x141210); }
+            if (OUT.hairColor !== undefined && n === "Hair") { m.color.set(OUT.hairColor); }
 
             m.needsUpdate = true;
 

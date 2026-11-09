@@ -26,3 +26,16 @@ DONE (round 2)
 NOT DONE
 - Ghost stuck-at-door pathing, ghost on grass/back-stairs navigation changes
 - Full environment redesign (textures, red lighting areas)
+
+ROUND 16
+- Back stairs: removed the solid blocks I had put under the stairs (they were in the way). Checked with the game's real Player + Collision code in Node: walking in through the gate and up to the terrace, and back down, both work (js/spiral.js)
+- First screen: the poster picture is gone; an animated HEAVEN HOSTEL title (glowing, swaying, flickering, dripping blood) over the 3D gate (index.html)
+- Ending: Ramu now turns his FRONT to you and says thank you (js/mystery.js). After he goes: dawn, you walk out of the open front door and gate, leave the letter on a stone, a girl (Ramu's sister) comes up the road, takes the letter, and a final scene shows her family crying as she reads it, then THE END (js/outro.js, js/story.js theEnd)
+- Practice Mode is separate: ground floor only (you are put back if you climb), only doors can be used, no ghost/story/clues/stats/saves; the Ghost 3D Model View is only inside Practice Mode (button in the practice panel, key G, and the pause menu), no longer outside it (js/menu.js, js/main.js, js/interaction.js, index.html)
+- Mystery door: the crypt hatch in the graveyard stays chained shut. A shovel stands near it; pick it up (E), then with Ramu's letter hit the hatch (E): three blows, the chains snap and the slab breaks open (js/mystery.js)
+
+ROUND 17 / 18
+- ENDING FIXED: after you walk out, the black screen is gone - the ending pictures (girl finds the letter at the gate, runs home, the family reads it and cries) and THE END now show. The black veil used to stay on top of them (js/outro.js). The walk-out can no longer get stuck either.
+- Ghost: patrols the lawn in front of the open main door and can open the main door himself; walks the bridge and the back (spiral) stairs once the stair door is unlocked and open, and opens that door himself (js/ghosts.js, js/spiral.js, js/yard.js). A built-in self-check confirms a path exists from the roof stairs to the foot of the back stairs and to the lawn
+- Sacred threads, knots, rusty padlock and chain on the doors that start locked (rooms 101 and 104) (js/ritualdoor.js, js/world.js)
+- Damp, peeling, mouldy walls with water stains; dirty floors with grime and debris; dim dirty-yellow lights; a tighter flashlight with softer falloff; darker muted colour wash + dark corners (js/haunted.js, index.html)

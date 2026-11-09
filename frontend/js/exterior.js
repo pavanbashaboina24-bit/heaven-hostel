@@ -1863,6 +1863,9 @@ function buildGate(R, rng) {
         registerDoor(lf.pivot, 0, -lf.ldir * 1.7, false, "gate")
     );
 
+    // the ending: the gate opens by itself and stays open
+    events.on("outro-open-gate", () => { handles.forEach((hd) => hd.setOpen(true)); });
+
     let gateHits = 0;
 
     // ---- THE TRAP: you open the gate, walk in ... and it closes behind you.

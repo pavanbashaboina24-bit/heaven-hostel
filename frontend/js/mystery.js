@@ -8,6 +8,7 @@ import { audio } from "./audio.js";
 import { story, ALL } from "./story.js";
 import { events } from "./events.js";
 import { tween } from "./secrets.js";
+import { startOutro, initOutro } from "./outro.js";
 
 // ======================================================
 // RAMU'S SECRET ROOM  -  where the game ends
@@ -28,8 +29,15 @@ import { tween } from "./secrets.js";
 
 const ROOM = { x: 0, y: -24, z: 0, hx: 4.4, hz: 3.7 };
 
+// the shovel that breaks the crypt hatch open
+inventory.define("shovel", {
+    name: "Old shovel", kind: "thing", icon: "\u26CF\uFE0F", text: "A heavy old grave-digger's shovel. Strong enough to break rusted chains and a stone seal."
+});
+
 // the secret door in the mess hall (world position of the door's middle on the wall)
 const DOOR = { x: 5.25, z: -3.75 };
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ------------------------------------------------------ the black fade
 let fadeEl = null;
@@ -54,6 +62,8 @@ function fade(to, ms) {
 // THE ROOM UNDERGROUND (built once, empty and unreachable)
 // ======================================================
 export function buildMystery(scene, cs, interaction) {
+
+    initOutro(scene);
 
     const ctx = { scene, cs, floorNumber: 1, floorHeight: ROOM.y, interaction };
 
@@ -480,7 +490,7 @@ export function buildMystery(scene, cs, interaction) {
     scene.add(ramu.root);
 
     const SCRIPT = [
-        { at: 2.2, text: "Ramu:  \"Thank you.\"", sec: 3 },
+        { at: 2.2, text: "Ramu:  \"Thank you, my friend. You came, and you listened.\"", sec: 3.2 },
         { at: 5.4, text: "Ramu:  \"Now Amma will hear what I could never tell her.\"", sec: 3.6 },
         { at: 9.2, text: "Ramu:  \"I am not afraid any more. Go home, my friend. Goodbye.\"", sec: 3.8 }
     ];
@@ -504,7 +514,7 @@ export function buildMystery(scene, cs, interaction) {
 
             const dx = p.pos.x - pos.x, dz = p.pos.z - pos.z;
 
-            ramu.root.rotation.y = Math.atan2(-dx, -dz);
+            ramu.root.rotation.y = Math.atan2(dx, dz);          // (his FRONT towards you)
 
             ramu.update(dt, { speed: 0, run: false, look: p.pos, open: undefined, calm: 1, leftTo: null, rightTo: null }, null, false);
         }
@@ -528,7 +538,7 @@ export function buildMystery(scene, cs, interaction) {
 
             audio.play("bell", { vol: 0.4, send: 0.6, ui: true });
 
-            try { story.ending(); }
+            try { startOutro(() => story.outroPictures()); }
             catch (e) { events.emit("gameover-story"); if (story.onEnd) story.onEnd(); }
         }
     });
@@ -619,7 +629,7 @@ export function buildMystery(scene, cs, interaction) {
 
         setTimeout(() => {
 
-            try { story.ending(); }
+            try { startOutro(() => story.outroPictures()); }
             catch (e) { events.emit("gameover-story"); if (story.onEnd) story.onEnd(); }
 
         }, 2800);
@@ -1095,23 +1105,184 @@ export function addCrypt(R) {
 
     const letterOk = () => inventory.has("ramu_letter") || inventory.flag("room_entered");
 
-    const opened = () => inventory.flag("door_revealed") || ALL.every((id) => story.solved(id));
+    // the hatch is CLOSED until you break it open with the shovel
+    const opened = () => inventory.flag("crypt_broken");
 
     let going = false;
 
-    trig.userData.getPrompt = () => (opened()
-        ? (letterOk() ? "Press E - Go down into the crypt" : "Press E - The hatch is open (a lock still holds the stairs)")
-        : "Press E - The crypt hatch is sealed");
+    // ---- the shovel, standing against a gravestone near the hatch ----
+    const makeShovel = () => {
 
-    trig.userData.interact = () => {
+        const sg = new THREE.Group();
+
+        const wood = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.026, 1.25, 8), new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 1 }));
+
+        wood.position.y = 0.62;
+
+        sg.add(wood);
+
+        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.04), new THREE.MeshStandardMaterial({ color: 0x5a3c22, roughness: 1 }));
+
+        grip.position.y = 1.25;
+
+        sg.add(grip);
+
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.02), new THREE.MeshStandardMaterial({ color: 0x5c5650, roughness: 0.7, metalness: 0.6 }));
+
+        blade.position.y = -0.1;
+
+        sg.add(blade);
+
+        return sg;
+    };
+
+    const shovel = makeShovel();
+
+    shovel.position.set(CRYPT.x + 1.7, 0.1, CRYPT.z - 1.1);
+
+    shovel.rotation.set(0.0, 0.4, 0.28);
+
+    R.group.add(shovel);
+
+    const sTrig = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+
+    sTrig.scale.set(1.0, 1.6, 1.0);
+
+    sTrig.position.set(CRYPT.x + 1.7, 0.8, CRYPT.z - 1.1);
+
+    sTrig.visible = false;
+
+    R.group.add(sTrig);
+
+    if (R.interaction) R.interaction.add(sTrig);
+
+    sTrig.userData.getPrompt = () => "Press E - Take the old shovel";
+
+    sTrig.userData.interact = () => {
+
+        if (inventory.has("shovel")) return;
+
+        inventory.add("shovel");
+
+        shovel.visible = false;
+
+        sTrig.visible = false;
+
+        const arr = R.interaction.interactableObjects, i = arr.indexOf(sTrig);
+
+        if (i >= 0) arr.splice(i, 1);
+
+        audio.paper();
+
+        inventory.say("An old grave-digger's shovel. Heavy enough to break a rusted lock.", 4);
+    };
+
+    // after loading a save: the shovel is only in the world until you take it
+    const syncShovel = () => {
+
+        const has = inventory.has("shovel") || inventory.flag("crypt_broken");
+
+        shovel.visible = !has;
+
+        const arr = R.interaction.interactableObjects, i = arr.indexOf(sTrig);
+
+        if (has && i >= 0) arr.splice(i, 1);
+
+        if (!has && i < 0) R.interaction.add(sTrig);
+    };
+
+    trig.userData.getPrompt = () => {
+
+        if (opened()) return letterOk() ? "Press E - Go down into the crypt" : "Press E - The way down is open (a last lock holds the stairs)";
+
+        if (inventory.has("shovel") && letterOk()) return "Press E - Hit the hatch with the shovel";
+
+        return "Press E - The crypt hatch is chained shut";
+    };
+
+    // swing the shovel: a held shovel on screen, the camera dips with every blow
+    const swing = async (hits) => {
+
+        const p = getPlayer();
+
+        const held = makeShovel();
+
+        held.scale.setScalar(0.7);
+
+        held.position.set(0.3, -0.35, -0.55);
+
+        held.rotation.set(0.5, 0.2, 0.5);
+
+        p.camera.add(held);
+
+        if (p.camera.parent === null && R.group.parent) R.group.parent.add(p.camera);
+
+        const z0 = g.position.x;
+
+        for (let i = 0; i < hits; i++) {
+
+            const pitch0 = p.pitch;
+
+            for (let k = 0; k < 6; k++) { held.rotation.x = 0.5 - k * 0.2; p.pitch = pitch0 + k * 0.05; await sleep(24); }
+
+            for (let k = 0; k < 4; k++) { held.rotation.x = -0.7 + k * 0.45; p.pitch = pitch0 - 0.1 * k; await sleep(18); }
+
+            audio.play("thud", { vol: 1.2, send: 0.3 });
+
+            audio.lockHit(i + 1);
+
+            for (let k = 0; k < 8; k++) { g.position.x = CRYPT.x + (k % 2 ? 0.03 : -0.03); await sleep(30); }
+
+            g.position.x = CRYPT.x;
+
+            p.pitch = pitch0;
+
+            held.rotation.set(0.5, 0.2, 0.5);
+
+            await sleep(380);
+        }
+
+        p.camera.remove(held);
+    };
+
+    trig.userData.interact = async () => {
 
         if (going) return;
 
         if (!opened()) {
 
-            audio.doorLocked();
+            if (!inventory.has("shovel") || !letterOk()) {
 
-            inventory.say("Heavy chains and an iron padlock hold the stone hatch shut.\nIt will not move until the hostel's puzzles are solved.", 5);
+                audio.doorLocked();
+
+                if (!letterOk()) inventory.say("Heavy chains and an iron padlock hold the stone hatch shut.\nSomething of Ramu's must be found first: his letter, sewn inside the swing seat in the yard.\n(Use the rusty blade.)", 6);
+                else inventory.say("The hatch is chained shut and the padlock is rusted solid.\nSomething heavy could break it... there was a shovel near the graves.", 5);
+
+                return;
+            }
+
+            // you have the letter and the shovel: break it open
+            going = true;
+
+            inventory.say("You raise the shovel...", 1.4);
+
+            await swing(3);
+
+            chains.visible = false;
+
+            inventory.setFlag("crypt_broken");
+
+            audio.play("slam", { vol: 1.1, send: 0.3 });
+
+            audio.puzzle("thunk");
+
+            audio.play("creak_3", { vol: 0.9, send: 0.3, t: 0.6 });
+
+            show(true);
+
+            inventory.say("The chains snap. The stone hatch breaks open and a red glow climbs out of the dark.", 4.5);
+
+            going = false;
 
             return;
         }
@@ -1274,28 +1445,28 @@ export function addCrypt(R) {
         }, 900);
     });
 
-    // the story says: the hatch opens now
+    // the story says: something under the graves stirs (the hatch itself stays chained shut until it is broken)
     events.on("reveal-door", () => {
 
         inventory.setFlag("door_revealed");
 
-        audio.play("slam", { vol: 1.0, send: 0.3 });
+        audio.play("slam", { vol: 0.8, send: 0.5 });
 
         audio.puzzle("thunk");
-
-        audio.play("creak_3", { vol: 0.9, send: 0.3, t: 0.8 });
-
-        show(true);
     });
 
     inventory.resetHooks.push(sync);
 
+    inventory.resetHooks.push(syncShovel);
+
     sync();
+
+    syncShovel();
 
     if (typeof window !== "undefined") {
 
-        window.hhReveal = () => { events.emit("reveal-door"); return "the crypt hatch in the graveyard is open now"; };
+        window.hhReveal = () => { events.emit("reveal-door"); return "(the hatch only opens when you break it with the shovel)"; };
 
-        window.hhRoom = () => { events.emit("reveal-door"); trig.userData.interact(); return "going down to Ramu's room..."; };
+        window.hhRoom = () => { events.emit("reveal-door"); inventory.setFlag("crypt_broken"); show(false); trig.userData.interact(); return "going down to Ramu's room..."; };
     }
 }

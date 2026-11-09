@@ -6,6 +6,7 @@ import { audio } from "./audio.js";
 import { story } from "./story.js";
 import { frameHooks, getPlayer, canvasTexture } from "./haunted.js";
 import { tween } from "./secrets.js";
+import { events } from "./events.js";
 
 // ======================================================
 // THE BACK STAIRS:  a round iron staircase behind the hostel
@@ -107,21 +108,6 @@ export function buildSpiral(scene, cs, interaction) {
     group.add(pole);
 
     wallBox(S.cx, 0, S.cz, 0.6, S.top + 0.4, 0.6);
-
-    // The space UNDER the treads of the first turn is solid: before, you could walk in underneath the
-    // staircase and stand INSIDE it.  Each block is as tall as its tread, so you can still climb
-    // tread by tread (a step is lower than the 0.3 m step-up) but never walk into the stairs.
-    for (let j = 1; j < S.per; j++) {
-
-        const a = centreAngle(j), h = (j + 1) * rise;
-
-        for (const r of [0.65, 1.1, 1.55, 2.0]) {
-
-            const w = Math.min(0.8, (TAU * r / S.per) * 1.15);       // about one tread wide, so steps stay climbable
-
-            wallBox(S.cx + Math.cos(a) * r, 0, S.cz + Math.sin(a) * r, w, h, w);
-        }
-    }
 
     // ---------------------------------------------------- treads (one draw call)
     // one wedge, centred on angle 0 (three.js: x = sin t, z = cos t, so t = 90deg - a)
@@ -773,6 +759,8 @@ export function buildSpiral(scene, cs, interaction) {
 
         doorNow = open;
 
+        events.emit("spiral-door", !!open);
+
         setDoorBlock(!open);
 
         audio.play(open ? "creak_3" : "thud", { vol: open ? 1.0 : 0.6, send: 0.4 });
@@ -850,12 +838,17 @@ export function buildSpiral(scene, cs, interaction) {
 
         doorNow = false;
 
+        events.emit("spiral-door", false);
+
         leafPivot.rotation.y = 0;
 
         setDoorBlock(true);
     };
 
     inventory.resetHooks.push(sync);
+
+    // the ghost opens this door himself when it is in his way (once it has been unlocked)
+    events.on("ghost-opens-spiral-door", () => { if (inventory.flag("terrace_door_unlocked") && !doorNow) swingDoor(true); });
 
     sync();
 }

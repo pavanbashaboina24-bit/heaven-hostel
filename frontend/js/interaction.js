@@ -189,6 +189,16 @@ export class InteractionSystem {
 
     select(object) {
 
+        // PRACTICE MODE is only for practising movement: no clues, drawers, keys or puzzles; only doors
+        if (document.body.classList.contains("practice") && object.userData.pivot === undefined) {
+
+            this.currentObject = null;
+
+            this.hide();
+
+            return;
+        }
+
         this.currentObject = object;
 
         let text;

@@ -288,6 +288,21 @@ export function lockMainDoor(door, handle, width) {
     // threads in a star, bells, chillies, lemons, bloody bag and a heavy bolt with an old padlock
     const hasp = buildRitualSeal(door, width);
 
+    // tell the ghost when the front door stands open (he then also patrols the lawn outside it)
+    {
+        let lastOpen = null;
+
+        frameHooks.push(() => {
+
+            const o = !!handle.isOpen && unlocked();
+
+            if (o !== lastOpen) { lastOpen = o; events.emit("main-door-state", o); }
+        });
+    }
+
+    // the ending: the front door stands open
+    events.on("outro-open-main", () => { if (!handle.isOpen) handle.setOpen(true); door.userData.isOpen = true; hasp.visible = false; });
+
     frameHooks.push((t) => { if (hasp.visible && hasp.userData.sway) hasp.userData.sway(t); });
 
     const openedBefore = door.userData.interact;

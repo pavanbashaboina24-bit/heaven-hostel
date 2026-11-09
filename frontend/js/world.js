@@ -28,6 +28,7 @@ import {
 
 import { buildExterior, getFacadeMaterial } from "./exterior.js";
 import { buildYardPuzzle, lockMainDoor } from "./yard.js";
+import { addSacredThreads } from "./ritualdoor.js";
 
 import { decorateStairs } from "./stairdecor.js";
 
@@ -1394,6 +1395,9 @@ function createDoor(
     );
 
     addDoorPrints(door, 1.4, 0.15, 2, true);
+
+    // the doors that start locked are tied shut with sacred threads
+    if (door.userData.isLocked) addSacredThreads(door);
 
 
     // ==================================================
