@@ -46,17 +46,17 @@ const PHONE = (() => {
 export const SETTINGS = {
 
     // OUTSIDE (yard, roof): the dark night it always was
-    ambient: PHONE ? 1.05 : 0.46,
+    ambient: PHONE ? 0.70 : 0.34,
     fogDensity: PHONE ? 0.045 : 0.066,
 
     // INSIDE the hostel: lit with normal brightness, the lights never go out
-    ambientIn: PHONE ? 1.5 : 1.45,
-    hemiIn: 0.9,
+    ambientIn: PHONE ? 1.05 : 1.0,
+    hemiIn: 0.62,
     fogIn: 0.018,
 
     flashlight: PHONE ? 150 : 95,         // flashlight strength
 
-    bulb: PHONE ? 30 : 24,                // strength of the room bulbs
+    bulb: PHONE ? 22 : 17,                // strength of the room bulbs
 
     vignette: false                       // (OFF: no dark/blurry screen edges at all)
 };
@@ -3027,7 +3027,7 @@ export function setupHauntedAtmosphere(scene) {
 
     ambientLight = new THREE.AmbientLight(0xe6dcc4, SETTINGS.ambient);      // (brightened inside the hostel every frame: see applyLight)
 
-    hemiLight = new THREE.HemisphereLight(0xd8dccc, 0x8a7a64, PHONE ? 0.8 : 0.35);   // dirty green above, old brown-maroon bounce below
+    hemiLight = new THREE.HemisphereLight(0xd8dccc, 0x8a7a64, PHONE ? 0.55 : 0.27);   // dirty green above, old brown-maroon bounce below
 
     scene.add(ambientLight);
 
@@ -4073,7 +4073,7 @@ function applyLight() {
 
     if (ambientLight) ambientLight.intensity = (SETTINGS.ambient + (SETTINGS.ambientIn - SETTINGS.ambient) * k) * brightV;
 
-    if (hemiLight) hemiLight.intensity = ((PHONE ? 0.8 : 0.35) + (SETTINGS.hemiIn - (PHONE ? 0.8 : 0.35)) * k) * brightV;
+    if (hemiLight) hemiLight.intensity = ((PHONE ? 0.55 : 0.27) + (SETTINGS.hemiIn - (PHONE ? 0.55 : 0.27)) * k) * brightV;
 }
 
 export function setBrightness(v) {

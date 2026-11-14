@@ -1,3 +1,4 @@
+import { freezeTimers, dropFrozenTimers } from "./timefreeze.js";
 import * as THREE from
 "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
@@ -206,6 +207,11 @@ function pauseGame() {
     menu.showPause();
 
     audio.setPaused(true);
+
+    // everything stands still: sounds silent, scenes and timers frozen (until Resume)
+    audio.setGameMute(true);
+
+    freezeTimers(true);
 }
 
 function startPlaying() {
@@ -213,6 +219,10 @@ function startPlaying() {
     state.mode = "playing";
 
     state.session = true;
+
+    dropFrozenTimers();
+
+    audio.setGameMute(false);
 
     menu.sessionActive = true;
 
@@ -234,6 +244,9 @@ function enterMenuMode() {
     ghosts.suspend(true);
     interactionSystem.hide();
     audio.setMode("menu");
+    // a running game stays frozen behind the menu (no sound, no timers) until Resume
+    audio.setGameMute(true);
+    if (state.session) freezeTimers(true);
 }
 
 document.addEventListener("pointerlockchange", () => {
@@ -255,6 +268,10 @@ document.addEventListener("pointerlockerror", () => {
         state.mode = "paused";
 
         menu.showPause();
+
+        audio.setGameMute(true);
+
+        freezeTimers(true);
     }
 });
 
@@ -385,9 +402,16 @@ menu.init({
 
         setMenuMode(false);
 
+        ghosts.suspend(false);
+
         audio.setPaused(false);
 
         audio.setMode("game");
+
+        // sounds and timers carry on from the very moment the game was stopped
+        audio.setGameMute(false);
+
+        freezeTimers(false);
 
         lockPointer();
     },
@@ -462,13 +486,25 @@ setTimeout(() => loading.classList.add("gone"), 500);
 
 const clock = new THREE.Clock();
 
+let lastReal = performance.now() / 1000;
+
+let pausedTotal = 0;
+
 function animate() {
 
     requestAnimationFrame(animate);
 
     const delta = Math.min(clock.getDelta(), 0.1);
 
-    const t = performance.now() / 1000;
+    const real = performance.now() / 1000;
+
+    // GAME CLOCK: does not run while the pause menu / menu is open, so the ghost's timers,
+    // cooldowns and searches stand still too and carry on exactly where they stopped
+    if (state.mode !== "playing") pausedTotal += real - lastReal;
+
+    lastReal = real;
+
+    const t = real - pausedTotal;
 
     if (state.mode === "playing") {
 
@@ -504,23 +540,31 @@ function animate() {
 
         updateHaunted(t, delta, camera, false);
     }
+    else if (state.session) {
+
+        // a running game is behind the menu: it stands still exactly where you stopped
+        // (no jump to the gate); Resume carries on from here
+        updateHaunted(t, delta, camera, false);
+
+        audio.updateMenu(delta);        // (the menu sound, as before)
+    }
     else {
 
         // title / menus: the camera slowly drifts in front of the gate
         camera.position.set(
-            36 + Math.sin(t * 0.1) * 0.7,
-            1.95 + Math.sin(t * 0.23) * 0.05,
-            Math.sin(t * 0.07) * 1.4
+            36 + Math.sin(real * 0.1) * 0.7,
+            1.95 + Math.sin(real * 0.23) * 0.05,
+            Math.sin(real * 0.07) * 1.4
         );
 
         camera.rotation.set(
-            0.05 + Math.sin(t * 0.13) * 0.012,
-            Math.PI / 2 + Math.sin(t * 0.08) * 0.05,
-            Math.sin(t * 0.11) * 0.004,
+            0.05 + Math.sin(real * 0.13) * 0.012,
+            Math.PI / 2 + Math.sin(real * 0.08) * 0.05,
+            Math.sin(real * 0.11) * 0.004,
             "YXZ"
         );
 
-        updateHaunted(t, delta, camera, false);
+        updateHaunted(real, delta, camera, false);
 
         audio.updateMenu(delta);
     }

@@ -143,6 +143,8 @@ class AudioEngine {
 
         this.paused = false;
 
+        this.gameMuted = false;       // pause menu / menu: every game sound is silent
+
         this.fear = 0;
 
         this.stepSide = 1;
@@ -301,7 +303,7 @@ class AudioEngine {
         const t = this.ctx.currentTime;
 
         this.master.gain.setTargetAtTime(this.vol.master, t, 0.05);
-        this.sfxBus.gain.setTargetAtTime(this.vol.sfx, t, 0.05);
+        this.sfxBus.gain.setTargetAtTime(this.gameMuted ? 0 : this.vol.sfx, t, 0.05);
         this.musicBus.gain.setTargetAtTime(this.vol.music, t, 0.05);
     }
 
@@ -887,6 +889,8 @@ class AudioEngine {
 
         this.setMuffle(false);
 
+        if (mode === "menu" && this.revSend) this.revSend.gain.setTargetAtTime(1, this.ctx.currentTime, 0.1);
+
         if (mode === "game") {
             this.glassTimer = rnd(90, 180);
             this.roamTimer = rnd(20, 40);
@@ -910,6 +914,24 @@ class AudioEngine {
         }
 
         this.setMuffle(p || this.hidden);
+    }
+
+    // pause menu / menu: all game sounds go silent (loops, echoes, scares ...) and
+    // come back exactly where they were when the game is resumed
+    setGameMute(on) {
+
+        this.gameMuted = !!on;
+
+        if (!this.ready) return;
+
+        const t = this.ctx.currentTime;
+
+        this.sfxBus.gain.cancelScheduledValues(t);
+
+        this.sfxBus.gain.setTargetAtTime(on ? 0 : this.vol.sfx, t, on ? 0.03 : 0.12);
+
+        // the room echo is cut too (but not while the menu sound plays)
+        if (this.revSend) this.revSend.gain.setTargetAtTime(on && this.mode === "game" ? 0 : 1, t, 0.03);
     }
 
     setMuffle(on) {
@@ -1389,13 +1411,11 @@ class AudioEngine {
 
         const running = !!(p && !p.hidden && p.keys && p.keys.run && moving);
 
-        // sitting / sleeping is calm: only real hiding raises the heartbeat
+        // sitting / sleeping is calm: only real hiding gives the heartbeat
         const hidden = !!(p && p.hidden && !(p.hideSpot && p.hideSpot.rest));
 
-        const target = Math.max(
-            hidden ? 1.0 : (running ? 0.8 : 0),
-            this.ghostFear || 0
-        );
+        // the heartbeat is ONLY for hiding (not for running, not for the ghost being near)
+        const target = hidden ? 1.0 : 0;
 
         this.fear += (target - this.fear) *
             Math.min(1, (target > this.fear ? 1.3 : 0.22) * dt);
