@@ -3452,7 +3452,7 @@ export function updateHaunted(t, dt, camera, playing) {
         p.fade = Math.min(1, p.fade + dt * 4);
 
         p.light.intensity = target
-            ? SETTINGS.bulb * Math.max(0.8, target.lvl) * Math.max(0.8, target.power || 1) * p.fade
+            ? SETTINGS.bulb * Math.max(ghostFx.power > 0.05 ? 0 : 0.8, target.lvl) * Math.max(ghostFx.power > 0.05 ? 0 : 0.8, target.power || 1) * p.fade
             : 0;
     }
 

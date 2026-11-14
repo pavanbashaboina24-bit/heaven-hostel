@@ -39,3 +39,10 @@ ROUND 17 / 18
 - Ghost: patrols the lawn in front of the open main door and can open the main door himself; walks the bridge and the back (spiral) stairs once the stair door is unlocked and open, and opens that door himself (js/ghosts.js, js/spiral.js, js/yard.js). A built-in self-check confirms a path exists from the roof stairs to the foot of the back stairs and to the lawn
 - Sacred threads, knots, rusty padlock and chain on the doors that start locked (rooms 101 and 104) (js/ritualdoor.js, js/world.js)
 - Damp, peeling, mouldy walls with water stains; dirty floors with grime and debris; dim dirty-yellow lights; a tighter flashlight with softer falloff; darker muted colour wash + dark corners (js/haunted.js, index.html)
+
+ROUND 20 - GHOST AI UPGRADE (see docs/ghost-ai.md)
+- Vision cone + near sense, hearing of interactions, listen-then-investigate, idle quirks (observe, scan, tilt, look behind, twitch, corner), crawling, blinking out
+- Smarter search: varied hiding-place checks (listen / knock / slowly open), fair find chance, mercy, revisits, fake leave-and-return
+- Director scenes: stalk, behind, door knock x3 then slow open, window watcher; small scares (flicker, slam, falling book, shadow, distant steps, whisper, laugh)
+- Chase: speed ramp, heavy breathing and growls, short aggro delay before scene attacks
+- Anti-stuck: open door leaves never block him, main-door route fixed, watchdog + unstick

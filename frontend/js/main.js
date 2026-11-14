@@ -74,6 +74,9 @@ const collisionSystem = new CollisionSystem();
 
 const interactionSystem = new InteractionSystem(camera, scene);
 
+// using things makes a small noise that the ghost can hear
+interactionSystem.onInteract = () => events.emit("interact");
+
 const roomSystem = new RoomSystem();
 
 createFloor1(scene, collisionSystem, interactionSystem);

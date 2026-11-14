@@ -1137,7 +1137,9 @@ export function createGhostModel(scene, opts) {
         reachR: 0,
         curlL: 0.35,
         curlR: 0.7,
-        doorT: 0
+        doorT: 0,
+        crawl: 0,          // 0 = standing, 1 = crawling on the floor
+        tiltR: 0           // the unnatural head tilt (radians)
     };
 
     const tmpV = new THREE.Vector3();
@@ -1207,7 +1209,12 @@ export function createGhostModel(scene, opts) {
 
             A.lastSin = swing;
 
-            const amp = (run ? 0.78 : 0.34) * walkK;
+            // crawling on the floor (p.crawl = 1): the whole body goes down on hands and knees
+            A.crawl = lerp(A.crawl, p.crawl ? 1 : 0, Math.min(1, dt * 2.6));
+
+            const cr = A.crawl;
+
+            const amp = ((run ? 0.78 : 0.34) * (1 - cr) + 0.38 * cr) * walkK;
 
             const legSwing = [-swing * amp, swing * amp];
 
@@ -1215,7 +1222,8 @@ export function createGhostModel(scene, opts) {
 
                 const L = legs[i];
 
-                L.hip.rotation.x = legSwing[i] + (moving ? 0 : 0);
+                // (crawling: the thighs point straight down, the shins trail behind on the floor)
+                L.hip.rotation.x = lerp(legSwing[i] + (moving ? 0 : 0), -1.38 + legSwing[i] * 0.6, cr);
                 L.hip.rotation.z = L.side * 0.02;
 
                 const fwd = i === 0 ? swing : -swing;
@@ -1223,7 +1231,7 @@ export function createGhostModel(scene, opts) {
                 // the knee bends while the leg swings forward
                 const flex = Math.max(0, Math.sin(A.phase * (i === 0 ? 1 : 1) + (i === 0 ? 1.1 : 1.1 + Math.PI)));
 
-                L.knee.rotation.x = (moving ? (0.12 + flex * (run ? 1.25 : 0.55)) * walkK : 0.04);
+                L.knee.rotation.x = lerp((moving ? (0.12 + flex * (run ? 1.25 : 0.55)) * walkK : 0.04), 1.3 + Math.max(0, swing * (i ? -1 : 1)) * 0.25, cr);
 
                 L.ankle.rotation.x = -(L.hip.rotation.x + L.knee.rotation.x) * 0.55;
             }
@@ -1233,16 +1241,30 @@ export function createGhostModel(scene, opts) {
 
             A.lean = lerp(A.lean, hunch, Math.min(1, dt * 4));
 
-            pelvis.position.y = 1.03 + Math.abs(Math.cos(A.phase)) * 0.025 * walkK
-                + (run ? -0.05 : 0) - Math.sin(t * 1.6) * 0.003;
+            pelvis.position.y = lerp(1.03 + Math.abs(Math.cos(A.phase)) * 0.025 * walkK
+                + (run ? -0.05 : 0) - Math.sin(t * 1.6) * 0.003, 0.5 + Math.abs(Math.cos(A.phase)) * 0.02 * walkK, cr);
 
             pelvis.rotation.z = Math.sin(A.phase) * 0.045 * walkK;
             pelvis.rotation.y = -swing * 0.1 * walkK;
+            pelvis.rotation.x = 1.38 * cr;                 // crawling: the whole body pitched forward
 
-            spine.rotation.x = A.lean * 0.55;
-            chest.rotation.x = A.lean * 0.45;
+            spine.rotation.x = A.lean * 0.55 * (1 - cr);
+            chest.rotation.x = A.lean * 0.45 * (1 - cr);
             chest.rotation.y = swing * 0.14 * walkK;
             chest.rotation.z = -Math.sin(A.phase) * 0.04 * walkK + Math.sin(t * 0.7) * 0.012;
+
+            // twitching (p.twitch = strength): a jerk through the shoulders and ribs
+            const tw = p.twitch || 0;
+
+            if (tw > 0) {
+
+                const jerk = Math.sin(t * 41) * Math.sin(t * 13.7);
+
+                chest.rotation.y += jerk * 0.22 * tw;
+                chest.rotation.z += Math.sin(t * 37) * 0.09 * tw;
+                spine.rotation.z = Math.sin(t * 29) * 0.06 * tw;
+            }
+            else spine.rotation.z = 0;
 
             // breathing
             const breathRate = run ? 5.2 : 1.5;
@@ -1287,6 +1309,11 @@ export function createGhostModel(scene, opts) {
                     sz = arm.side * 0.1;
                     ex = -0.15 - Math.sin(t * 0.9 + i) * 0.04;
                 }
+
+                // crawling: the arms hang straight down to the floor and reach alternately
+                if (cr > 0.01) sx = lerp(sx, -1.38 - Math.sin(A.phase + (isRight ? 0 : Math.PI)) * 0.45 * walkK, cr);
+
+                if (tw > 0) sx += Math.sin(t * 33 + i * 2) * 0.25 * tw;
 
                 arm.shoulder.rotation.x = lerp(arm.shoulder.rotation.x, sx, Math.min(1, dt * 8));
                 arm.shoulder.rotation.z = lerp(arm.shoulder.rotation.z, sz, Math.min(1, dt * 8));
@@ -1346,12 +1373,24 @@ export function createGhostModel(scene, opts) {
                 wantPitch = clamp(pit, -0.5, 0.6);
             }
 
-            const hk = p.look ? Math.min(1, dt * 7) : Math.min(1, dt * 2.2);
+            let hk = p.look ? Math.min(1, dt * 7) : Math.min(1, dt * 2.2);
+
+            // the head turned far round (even looking BEHIND him) and snapped to it quickly
+            if (p.headYaw !== undefined && p.headYaw !== null) {
+
+                wantYaw = clamp(p.headYaw, -2.9, 2.9);
+                hk = Math.min(1, dt * (p.headSnap ? 16 : 3.2));
+            }
 
             A.headYaw = lerp(A.headYaw, wantYaw, hk);
             A.headPitch = lerp(A.headPitch, wantPitch, hk);
 
-            headPivot.rotation.set(A.headPitch - A.lean * 0.6, A.headYaw, Math.sin(t * 0.4) * 0.05 + 0.06, "YXZ");
+            // the unnatural tilt of the head (sideways), eased
+            A.tiltR = lerp(A.tiltR, p.headTilt || 0, Math.min(1, dt * 3.5));
+
+            const jit = tw > 0 ? Math.sin(t * 47) * 0.12 * tw : 0;
+
+            headPivot.rotation.set(A.headPitch - A.lean * 0.6 * (1 - cr) - 1.75 * cr, A.headYaw, Math.sin(t * 0.4) * 0.05 + 0.06 + A.tiltR + jit, "YXZ");
 
             // eyes: they drift on their own, then snap to the target
             const ey = (p.look ? 0 : Math.sin(t * 1.3) * 0.3) + Math.sin(t * 7.1) * 0.015;

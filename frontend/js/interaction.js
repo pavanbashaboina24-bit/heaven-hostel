@@ -272,6 +272,9 @@ export class InteractionSystem {
         if (object.userData.interact) {
 
             object.userData.interact();
+
+            // handling things makes a little noise the ghost can hear (drawers, objects, switches ...)
+            if (this.onInteract) this.onInteract(object);
         }
     }
 }

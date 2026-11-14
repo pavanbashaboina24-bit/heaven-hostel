@@ -456,6 +456,269 @@ class AudioEngine {
     // Called every frame while the ghost is near; louder and brighter the closer he is,
     // panned to the side he is on.  If it is not called for a moment it fades away by itself.
     // ------------------------------------------------------------------
+    // ------------------------------------------------------------------
+    // little synthesised sounds for the ghost's scenes (positional: they come from where he is)
+    // ------------------------------------------------------------------
+    _gv(x, y, z, vol, floor) {
+
+        if (!this.ready || this.mode !== "game" || !this.ctx || !this.sfxBus) return null;
+
+        const s = this.spatial(x, y, z);
+
+        const v = (vol === undefined ? 0.7 : vol) * (floor === undefined ? (0.25 + s.gain * 1.1) : s.gain);
+
+        if (v < 0.01) return null;
+
+        const ctx = this.ctx;
+
+        const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+
+        if (pan) pan.pan.value = s.pan;
+
+        const out = ctx.createGain();
+
+        out.gain.value = Math.min(1.4, v);
+
+        const lp = ctx.createBiquadFilter();
+
+        lp.type = "lowpass";
+
+        lp.frequency.value = s.gain < 0.3 ? 1800 : 7000;
+
+        out.connect(lp);
+
+        if (pan) { lp.connect(pan); pan.connect(this.sfxBus); } else lp.connect(this.sfxBus);
+
+        return { ctx, out, t: ctx.currentTime, s };
+    }
+
+    _noiseBuf(len) {
+
+        const ctx = this.ctx, n = Math.floor(ctx.sampleRate * len);
+
+        const b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0);
+
+        for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+
+        return b;
+    }
+
+    // a dry knock on wood (a door, a cupboard)
+    knock(x, y, z, vol) {
+
+        const g = this._gv(x, y, z, vol === undefined ? 0.8 : vol);
+
+        if (!g) return;
+
+        const { ctx, out, t } = g;
+
+        const o = ctx.createOscillator();
+
+        o.type = "triangle";
+
+        o.frequency.setValueAtTime(200 + Math.random() * 40, t);
+
+        o.frequency.exponentialRampToValueAtTime(92, t + 0.1);
+
+        const e = ctx.createGain();
+
+        e.gain.setValueAtTime(0.0001, t);
+        e.gain.exponentialRampToValueAtTime(0.95, t + 0.004);
+        e.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+
+        o.connect(e); e.connect(out);
+
+        o.start(t); o.stop(t + 0.24);
+
+        // the click of the knuckles
+        const n = ctx.createBufferSource();
+
+        n.buffer = this._noiseBuf(0.05);
+
+        const bp = ctx.createBiquadFilter();
+
+        bp.type = "bandpass"; bp.frequency.value = 1700; bp.Q.value = 1.2;
+
+        const ne = ctx.createGain();
+
+        ne.gain.setValueAtTime(0.6, t); ne.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+
+        n.connect(bp); bp.connect(ne); ne.connect(out);
+
+        n.start(t);
+    }
+
+    // an old hinge / board creaking
+    creak(x, y, z, vol) {
+
+        const g = this._gv(x, y, z, vol === undefined ? 0.6 : vol);
+
+        if (!g) return;
+
+        const { ctx, out, t } = g;
+
+        const dur = 0.9 + Math.random() * 0.5;
+
+        const o = ctx.createOscillator();
+
+        o.type = "sawtooth";
+
+        o.frequency.setValueAtTime(120, t);
+        o.frequency.linearRampToValueAtTime(210 + Math.random() * 60, t + dur * 0.55);
+        o.frequency.linearRampToValueAtTime(150, t + dur);
+
+        const lfo = ctx.createOscillator(), lg = ctx.createGain();
+
+        lfo.frequency.value = 23; lg.gain.value = 26;
+
+        lfo.connect(lg); lg.connect(o.frequency);
+
+        const bp = ctx.createBiquadFilter();
+
+        bp.type = "bandpass"; bp.frequency.value = 780; bp.Q.value = 5;
+
+        const e = ctx.createGain();
+
+        e.gain.setValueAtTime(0.0001, t);
+        e.gain.exponentialRampToValueAtTime(0.5, t + 0.12);
+        e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+        o.connect(bp); bp.connect(e); e.connect(out);
+
+        o.start(t); lfo.start(t); o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+    }
+
+    // a whisper right behind you (breath shaped into syllables)
+    ghostWhisper(x, y, z, vol) {
+
+        const g = this._gv(x, y, z, vol === undefined ? 0.6 : vol);
+
+        if (!g) return;
+
+        const { ctx, out, t } = g;
+
+        const dur = 1.5 + Math.random() * 0.8;
+
+        const n = ctx.createBufferSource();
+
+        n.buffer = this._noiseBuf(dur);
+
+        const f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter();
+
+        f1.type = "bandpass"; f1.frequency.value = 1500; f1.Q.value = 3;
+        f2.type = "bandpass"; f2.frequency.value = 3200; f2.Q.value = 2;
+
+        f1.frequency.linearRampToValueAtTime(900 + Math.random() * 900, t + dur);
+
+        const e = ctx.createGain();
+
+        e.gain.setValueAtTime(0.0001, t);
+
+        // 3-4 soft syllables
+        const syl = 3 + Math.floor(Math.random() * 2);
+
+        for (let i = 0; i < syl; i++) {
+
+            const a = t + (i / syl) * dur;
+
+            e.gain.linearRampToValueAtTime(0.55, a + 0.12);
+            e.gain.linearRampToValueAtTime(0.06, a + dur / syl * 0.85);
+        }
+
+        e.gain.linearRampToValueAtTime(0.0001, t + dur);
+
+        n.connect(f1); n.connect(f2); f1.connect(e); f2.connect(e); e.connect(out);
+
+        n.start(t);
+    }
+
+    // disturbing laughter: a run of "ha"s that falls in pitch and cracks
+    ghostLaugh(x, y, z, vol) {
+
+        const g = this._gv(x, y, z, vol === undefined ? 0.6 : vol);
+
+        if (!g) return;
+
+        const { ctx, out, t } = g;
+
+        const n = 5 + Math.floor(Math.random() * 3);
+
+        const base = 250 + Math.random() * 60;
+
+        for (let i = 0; i < n; i++) {
+
+            const a = t + i * (0.19 + Math.random() * 0.04);
+
+            const o = ctx.createOscillator();
+
+            o.type = "sawtooth";
+
+            const f = base * (1 - i * 0.055);
+
+            o.frequency.setValueAtTime(f * 1.25, a);
+            o.frequency.exponentialRampToValueAtTime(f * 0.82, a + 0.15);
+
+            const vib = ctx.createOscillator(), vg = ctx.createGain();
+
+            vib.frequency.value = 38; vg.gain.value = f * 0.07;
+
+            vib.connect(vg); vg.connect(o.frequency);
+
+            const fa = ctx.createBiquadFilter(), fb = ctx.createBiquadFilter();
+
+            fa.type = "bandpass"; fa.frequency.value = 800; fa.Q.value = 4;
+            fb.type = "bandpass"; fb.frequency.value = 1300; fb.Q.value = 5;
+
+            const e = ctx.createGain();
+
+            e.gain.setValueAtTime(0.0001, a);
+            e.gain.exponentialRampToValueAtTime(0.55 * (1 - i * 0.06), a + 0.02);
+            e.gain.exponentialRampToValueAtTime(0.0001, a + 0.16);
+
+            o.connect(fa); o.connect(fb); fa.connect(e); fb.connect(e); e.connect(out);
+
+            o.start(a); vib.start(a); o.stop(a + 0.2); vib.stop(a + 0.2);
+        }
+    }
+
+    // footsteps somewhere far away (heavy, dull, one by one)
+    distantSteps(x, y, z, count, vol) {
+
+        const g = this._gv(x, y, z, vol === undefined ? 0.5 : vol);
+
+        if (!g) return;
+
+        const { ctx, out, t } = g;
+
+        const lp = ctx.createBiquadFilter();
+
+        lp.type = "lowpass"; lp.frequency.value = 420;
+
+        lp.connect(out);
+
+        for (let i = 0; i < (count || 5); i++) {
+
+            const a = t + i * (0.62 + Math.random() * 0.12);
+
+            const o = ctx.createOscillator();
+
+            o.type = "sine";
+
+            o.frequency.setValueAtTime(95, a);
+            o.frequency.exponentialRampToValueAtTime(48, a + 0.14);
+
+            const e = ctx.createGain();
+
+            e.gain.setValueAtTime(0.0001, a);
+            e.gain.exponentialRampToValueAtTime(0.9, a + 0.01);
+            e.gain.exponentialRampToValueAtTime(0.0001, a + 0.2);
+
+            o.connect(e); e.connect(lp);
+
+            o.start(a); o.stop(a + 0.24);
+        }
+    }
+
     makeChainBuffer() {
 
         const ctx = this.ctx, sr = ctx.sampleRate, len = Math.floor(sr * 2.6);
